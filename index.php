@@ -47,7 +47,16 @@ try {
     db()->migrate();
 } catch (\Throwable $e) {
     log_error('Migrate: ' . $e->getMessage());
-    abort(500, 'Không kết nối được cơ sở dữ liệu. Kiểm tra lại config.php.');
+    $msg = $e->getMessage();
+    $hint = match (true) {
+        str_contains($msg, 'could not find driver') => 'PHP chưa bật extension pdo_mysql. Vào cPanel > Select PHP Version > Extensions, tick pdo_mysql (hoặc nd_pdo_mysql) và mysqlnd.',
+        str_contains($msg, '[1045]') => 'Sai user hoặc mật khẩu database trong config.php.',
+        str_contains($msg, '[1044]') || str_contains($msg, '[1049]') => 'Sai tên database, hoặc user chưa được gán vào database (cPanel > MySQL Databases > Add User To Database, tick ALL PRIVILEGES).',
+        str_contains($msg, '[2002]') => 'Không kết nối được máy chủ MySQL – kiểm tra DB_HOST (thường là localhost).',
+        str_contains($msg, 'Duplicate column') || str_contains($msg, 'already exists') => 'Database đã được import tay nhưng thiếu mốc phiên bản. Vào phpMyAdmin chạy: REPLACE INTO settings (k, v) VALUES (\'schema_version\', \'2\');',
+        default => 'Lỗi khi kết nối / cập nhật cơ sở dữ liệu. Kiểm tra config.php.',
+    };
+    abort(500, $hint . (config('debug') ? ' Chi tiết: ' . $msg : ''));
 }
 
 // config.php không khai báo APP_URL: ghi nhớ địa chỉ web để cron worker dùng
