@@ -2,8 +2,7 @@
 /vendor/
 /uploads/*
 !/uploads/.htaccess
-/storage/logs/*
-!/storage/logs/.gitkeep
+/storage/
 .DS_Store
 Thumbs.db
 .idea/

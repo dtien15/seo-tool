@@ -26,24 +26,19 @@ Web nội bộ (PHP 8.1+ và MySQL) để team SEO quản lý nhiều dự án:
 
 ## 2. Đưa code lên hosting bằng Git™ Version Control
 
-1. **Sửa `.cpanel.yml`**: đổi `DEPLOYPATH` thành thư mục web chạy tool, ví dụ `/home/abcuser/seo.congty.com/`. Commit và push lên GitHub.
-2. Nếu repo GitHub để **Private**, cho hosting quyền đọc repo:
-   - cPanel → *SSH Access* → *Manage SSH Keys* → *Generate a New Key* (không đặt passphrase) → *Manage* → **Authorize**. Sau đó *View/Download* public key.
-   - GitHub → repo → *Settings* → *Deploy keys* → *Add deploy key* → dán public key vào (chỉ cần quyền đọc).
-3. cPanel → **Git™ Version Control** → *Create*:
-   - *Clone URL*: `git@github.com:<tài-khoản>/<repo>.git` (repo private) hoặc link HTTPS (repo public).
-   - *Repository Path*: một thư mục **ngoài** thư mục web, ví dụ `/home/abcuser/repositories/seo-tool`.
-4. Vào *Manage* → tab **Pull or Deploy** → bấm **Deploy HEAD Commit**. Code sẽ được copy sang `DEPLOYPATH` và `composer install` chạy tự động.
-5. Mở website → trình **cài đặt** hiện ra → điền thông tin MySQL và tạo tài khoản admin. Nên làm bước này ngay sau khi deploy, vì trước khi cài xong thì ai vào trang cũng thấy form cài đặt.
-
-> Nếu hosting không có composer (trang Cài đặt hệ thống báo *"Chưa cài thư viện Claude SDK"*), mở cPanel → *Terminal* rồi chạy
-> `cd ~/seo.congty.com && composer install --no-dev`.
-> Nếu không có Terminal: chạy `composer install --no-dev` trên máy tính rồi upload cả thư mục `vendor/` lên thư mục web.
+1. Repo **Private** nên cần cho hosting quyền đọc:
+   - cPanel → *SSH Access* → *Manage SSH Keys* → *Generate a New Key* (không đặt passphrase) → *Manage* → **Authorize** → *View/Download* public key.
+   - GitHub → repo → *Settings* → *Deploy keys* → *Add deploy key* → dán public key.
+2. cPanel → **Git™ Version Control** → *Create*:
+   - *Clone URL*: `git@github.com:dtien15/seo-tool.git`
+   - *Repository Path*: **thư mục web** (Document Root) của domain/subdomain chạy tool, thư mục phải trống.
+3. Cài thư viện (1 lần): cPanel → *Terminal* → `cd ~/<thư-mục-web> && composer install --no-dev`
+4. Mở website → **trình cài đặt** hiện ra → điền MySQL và tạo tài khoản admin (làm ngay sau khi clone).
 
 ### Cập nhật phiên bản mới
 
-Push code lên GitHub → cPanel *Git™ Version Control* → *Manage* → **Update from Remote** → **Deploy HEAD Commit**.
-Nếu bản mới có thay đổi database (file mới trong `database/migrations/`), tool tự cập nhật ở lần truy cập tiếp theo.
+cPanel → *Git™ Version Control* → *Manage* → **Update from Remote**. Nếu `composer.json` thay đổi thì chạy lại `composer install --no-dev`.
+Thay đổi database (file mới trong `database/migrations/`) tự áp dụng ở lần truy cập tiếp theo.
 
 ## 3. Cài cron (bắt buộc)
 
