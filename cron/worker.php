@@ -5,6 +5,15 @@
  */
 declare(strict_types=1);
 
+// Kiểm tra phiên bản PHP trước khi nạp code (code dùng cú pháp PHP 8.1)
+if (PHP_VERSION_ID < 80100) {
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=utf-8');
+    exit('Tool cần PHP 8.1 trở lên, hosting đang chạy PHP ' . PHP_VERSION . ".
+Vào cPanel > Select PHP Version (hoặc MultiPHP Manager) để chọn PHP 8.2 cho domain này.
+");
+}
+
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
     exit('CLI only');
