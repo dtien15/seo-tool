@@ -185,7 +185,8 @@ class Workflow
         $extra = [
             'status' => 'Đổi trạng thái', 'created' => 'Tạo bài', 'ai_outline' => 'AI tạo outline', 'ai_write' => 'AI viết bài',
             'ai_images' => 'AI tạo hình', 'upload_image' => 'Upload hình', 'publish' => 'Đăng WordPress', 'assign' => 'Giao việc',
-            'wp_import' => 'Lấy nội dung từ WordPress',
+            'wp_import' => 'Lấy nội dung từ WordPress', 'manual_outline' => 'Dán outline từ ChatGPT / Claude',
+            'manual_write' => 'Dán bài viết từ ChatGPT / Claude',
         ];
         return self::ACTIONS[$action][3] ?? $extra[$action] ?? $action;
     }

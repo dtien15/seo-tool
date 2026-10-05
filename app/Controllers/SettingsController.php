@@ -5,7 +5,6 @@ namespace App\Controllers;
 
 use App\Auth;
 use App\Models\Article;
-use App\Services\ClaudeService;
 use App\Services\GoogleSheetsService;
 use App\Settings;
 
@@ -19,6 +18,7 @@ class SettingsController
         view('settings', [
             'pageTitle' => 'Cài đặt hệ thống',
             'hasClaude' => Settings::has('anthropic_api_key'),
+            'provider' => \App\Services\AiText::provider(),
             'hasOpenAI' => Settings::has('openai_api_key'),
             'serviceEmail' => GoogleSheetsService::serviceEmail(),
             'sdkInstalled' => class_exists(\Anthropic\Client::class),
@@ -51,6 +51,15 @@ class SettingsController
             Settings::set('google_service_account', $json);
         }
 
+        if (isset(\App\Services\AiText::PROVIDERS[input('ai_provider')])) {
+            Settings::set('ai_provider', (string)input('ai_provider'));
+        }
+        Settings::set('openai_text_model', mb_substr(trim((string)input('openai_text_model', '')), 0, 80));
+        foreach (['openai_price_in', 'openai_price_out'] as $k) {
+            $v = trim((string)input($k, ''));
+            Settings::set($k, $v === '' ? '' : (string)max(0, (float)$v));
+        }
+
         $model = (string)input('claude_model');
         if (isset(Settings::CLAUDE_MODELS[$model])) {
             Settings::set('claude_model', $model);
@@ -76,8 +85,8 @@ class SettingsController
     {
         Auth::requireAdmin();
         try {
-            $res = ClaudeService::fromSettings()->complete('Bạn là trợ lý ngắn gọn.', 'Trả lời đúng một câu: "Kết nối thành công".', 2000);
-            json_response(['ok' => true, 'message' => trim($res['text']) . ' (model ' . $res['model'] . ')']);
+            $res = \App\Services\AiText::complete('Bạn là trợ lý ngắn gọn.', 'Trả lời đúng một câu: "Kết nối thành công".', 2000, ['user_id' => Auth::id()], 'test');
+            json_response(['ok' => true, 'message' => trim($res['text']) . ' (' . \App\Services\AiText::PROVIDERS[\App\Services\AiText::provider()] . ' · ' . $res['model'] . ')']);
         } catch (\Throwable $e) {
             json_response(['ok' => false, 'error' => $e->getMessage()]);
         }

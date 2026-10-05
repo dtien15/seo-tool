@@ -125,7 +125,8 @@ class ArticleController
             'writers' => Project::usersByRole('content'),
             'designers' => Project::usersByRole('design'),
             'perm' => self::permissions($article, $user),
-            'hasClaude' => Settings::has('anthropic_api_key'),
+            'hasAi' => \App\Services\AiText::ready(),
+            'aiManual' => \App\Services\AiText::isManual(),
             'hasOpenAI' => Settings::has('openai_api_key'),
             'linkCount' => (int)db()->value('SELECT COUNT(*) FROM internal_links WHERE project_id = ?', [$project['id']]),
             'tab' => 'articles',
@@ -255,6 +256,43 @@ class ArticleController
         }
         Queue::articleTask($task, $id, (int)$user['id']);
         flash('info', 'Đã đưa vào hàng đợi ' . self::TASK_LABELS[$task] . '. Trang sẽ tự cập nhật khi xong.');
+        redirect('/articles/' . $id);
+    }
+
+    /** Chế độ copy–dán: lấy prompt để dán sang ChatGPT / Claude. */
+    public function prompt(int $id): void
+    {
+        $user = Auth::requireLogin();
+        [$article, $project] = Article::findOrFail($id);
+        $task = (string)input('task');
+        if (!in_array($task, ['outline', 'write'], true)) {
+            json_response(['ok' => false, 'error' => 'Tác vụ không hợp lệ.'], 422);
+        }
+        Queue::assertAllowed($task, $article, (int)$user['id']);
+        [$system, $userPrompt] = $task === 'outline' ? \App\Jobs::outlinePrompt($article, $project) : \App\Jobs::writePrompt($article, $project);
+        json_response(['ok' => true, 'prompt' => \App\Services\AiText::manualPrompt($system, $userPrompt)]);
+    }
+
+    /** Chế độ copy–dán: nhận kết quả từ ChatGPT / Claude và áp dụng như khi AI chạy tự động. */
+    public function paste(int $id): void
+    {
+        $user = Auth::requireLogin();
+        [$article] = Article::findOrFail($id);
+        $task = (string)input('task');
+        $text = trim((string)($_POST['result'] ?? ''));
+        if (!in_array($task, ['outline', 'write'], true) || $text === '') {
+            throw new \RuntimeException('Chưa dán kết quả.');
+        }
+        Queue::assertAllowed($task, $article, (int)$user['id']);
+        if (in_array($article['ai_state'], ['queued', 'running'], true)) {
+            throw new \RuntimeException('AI đang xử lý bài này, vui lòng đợi xong.');
+        }
+        if ($task === 'outline') {
+            \App\Jobs::applyOutline($id, $text, (int)$user['id'], 'manual_outline');
+        } else {
+            \App\Jobs::applyWrite($id, $text, (int)$user['id'], 'manual_write');
+        }
+        flash('success', $task === 'outline' ? 'Đã lưu outline từ kết quả dán vào.' : 'Đã lưu bài viết từ kết quả dán vào. Kiểm tra lại nội dung trước khi gửi duyệt.');
         redirect('/articles/' . $id);
     }
 

@@ -121,8 +121,14 @@ $roleOf = ['admin' => 'Admin', 'leader' => 'TP', 'seo' => 'SEO', 'content' => 'C
                 <div class="card-header bg-white d-flex align-items-center">
                     <a class="text-decoration-none text-body fw-semibold" data-bs-toggle="collapse" href="#outline-box"><i class="bi bi-list-nested"></i> Outline</a>
                     <?php if (\App\Auth::is('seo', 'leader') && in_array($a['status'], ['plan', 'outline'], true)): ?>
-                        <button class="btn btn-sm btn-outline-primary ms-auto" form="task-form" name="task" value="outline" <?= $busy || !$hasClaude ? 'disabled' : '' ?>
-                            <?= $a['outline'] ? 'data-confirm="Tạo lại outline sẽ thay outline hiện tại. Tiếp tục?"' : '' ?>><i class="bi bi-stars"></i> AI tạo outline</button>
+                        <div class="ms-auto d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" <?= $busy ? 'disabled' : '' ?>
+                                data-manual-ai="<?= url($base . '/prompt?task=outline') ?>" data-paste-url="<?= url($base . '/paste') ?>" data-task="outline" data-title="Tạo outline với ChatGPT / Claude"><i class="bi bi-clipboard"></i> Copy prompt</button>
+                            <?php if (!$aiManual): ?>
+                                <button class="btn btn-sm btn-outline-primary" form="task-form" name="task" value="outline" <?= $busy || !$hasAi ? 'disabled' : '' ?>
+                                    <?= $a['outline'] ? 'data-confirm="Tạo lại outline sẽ thay outline hiện tại. Tiếp tục?"' : '' ?>><i class="bi bi-stars"></i> AI tạo outline</button>
+                            <?php endif; ?>
+                        </div>
                     <?php endif; ?>
                 </div>
                 <div class="collapse <?= in_array($a['status'], ['plan', 'outline', 'outline_review', 'writing'], true) ? 'show' : '' ?>" id="outline-box">
@@ -155,10 +161,15 @@ $roleOf = ['admin' => 'Admin', 'leader' => 'TP', 'seo' => 'SEO', 'content' => 'C
                             <button class="btn btn-sm btn-outline-secondary" form="wp-import-form" <?= $a['content'] ? 'data-confirm="Thay nội dung hiện tại bằng nội dung đang có trên WordPress?"' : '' ?>><i class="bi bi-cloud-download"></i> Lấy nội dung từ WordPress</button>
                         <?php endif; ?>
                         <?php if (in_array($a['status'], ['writing', 'revise'], true) && $perm['content']): ?>
-                            <button class="btn btn-sm btn-primary" form="task-form" name="task" value="write" <?= $busy || !$hasClaude ? 'disabled' : '' ?>
-                                <?= $a['content'] ? 'data-confirm="AI viết lại sẽ thay toàn bộ nội dung hiện tại. Tiếp tục?"' : '' ?>>
-                                <i class="bi bi-stars"></i> <?= $a['content'] ? 'AI viết lại' : 'AI viết bản nháp' ?>
-                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" <?= $busy ? 'disabled' : '' ?>
+                                data-manual-ai="<?= url($base . '/prompt?task=write') ?>" data-paste-url="<?= url($base . '/paste') ?>" data-task="write" data-title="Viết bài với ChatGPT / Claude"
+                                <?= $a['content'] ? 'data-confirm="Kết quả dán vào sẽ thay toàn bộ nội dung hiện tại. Tiếp tục?"' : '' ?>><i class="bi bi-clipboard"></i> Copy prompt</button>
+                            <?php if (!$aiManual): ?>
+                                <button class="btn btn-sm btn-primary" form="task-form" name="task" value="write" <?= $busy || !$hasAi ? 'disabled' : '' ?>
+                                    <?= $a['content'] ? 'data-confirm="AI viết lại sẽ thay toàn bộ nội dung hiện tại. Tiếp tục?"' : '' ?>>
+                                    <i class="bi bi-stars"></i> <?= $a['content'] ? 'AI viết lại' : 'AI viết bản nháp' ?>
+                                </button>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -334,6 +345,7 @@ $roleOf = ['admin' => 'Admin', 'leader' => 'TP', 'seo' => 'SEO', 'content' => 'C
     </div>
 </div>
 
+<?php require BASE_PATH . '/app/views/partials/manual_ai.php'; ?>
 <?php
 $scripts = '<script src="https://cdn.jsdelivr.net/npm/tinymce@7.6.1/tinymce.min.js"></script>'
     . '<script>SEO.initEditor("#content-editor"); SEO.pollArticle(); SEO.guardWorkflow();</script>';

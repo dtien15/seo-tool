@@ -30,8 +30,10 @@ $currentCluster = (string)input('cluster', '');
                     <?php if ($clusterJob): ?>
                         <div class="small text-info"><span class="spinner-border spinner-border-sm"></span> AI đang gom nhóm...</div>
                     <?php else: ?>
-                        <label class="small d-block mb-2"><input type="checkbox" name="only_missing" value="1" checked> Chỉ từ khóa chưa có nhóm</label>
-                        <button class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-stars"></i> AI gom nhóm chủ đề</button>
+                        <label class="small d-block mb-2"><input type="checkbox" name="only_missing" value="1" checked id="only-missing"> Chỉ từ khóa chưa có nhóm</label>
+                        <?php if (!$aiManual): ?><button class="btn btn-sm btn-outline-primary w-100 mb-2"><i class="bi bi-stars"></i> AI gom nhóm chủ đề</button><?php endif; ?>
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" data-manual-ai="<?= url('/projects/' . $project['id'] . '/keywords/prompt') ?>" data-only-missing="#only-missing"
+                            data-paste-url="<?= url('/projects/' . $project['id'] . '/keywords/paste') ?>" data-task="cluster" data-title="Gom nhóm từ khóa với ChatGPT / Claude"><i class="bi bi-clipboard"></i> Copy prompt (ChatGPT / Claude)</button>
                     <?php endif; ?>
                 </form>
             <?php endif; ?>
@@ -110,3 +112,5 @@ $currentCluster = (string)input('cluster', '');
         </div>
     </div>
 </div>
+
+<?php require BASE_PATH . '/app/views/partials/manual_ai.php'; ?>

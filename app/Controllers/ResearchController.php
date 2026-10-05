@@ -406,6 +406,7 @@ class ResearchController
             'total' => (int)db()->value('SELECT COUNT(*) FROM keywords WHERE project_id = ?', [$id]),
             'unclustered' => (int)db()->value("SELECT COUNT(*) FROM keywords WHERE project_id = ? AND (cluster IS NULL OR cluster = '')", [$id]),
             'clusterJob' => Queue::projectHasPending($id, 'cluster_keywords'),
+            'aiManual' => \App\Services\AiText::isManual(),
             'canEdit' => Auth::is('seo', 'leader'),
             'tab' => 'keywords',
         ]);
@@ -455,6 +456,9 @@ class ResearchController
         $ids = array_map('intval', (array)($_POST['ids'] ?? []));
         $action = (string)input('action');
         if ($action === 'cluster_ai') {
+            if (\App\Services\AiText::isManual()) {
+                throw new \RuntimeException('Đang ở chế độ thủ công: dùng nút "Copy prompt" để gom nhóm với ChatGPT / Claude.');
+            }
             if (!Queue::projectHasPending($id, 'cluster_keywords')) {
                 \App\Usage::assertWithinBudget((int)$user['id']);
                 Queue::push('cluster_keywords', ['only_missing' => input('only_missing') ? 1 : 0], ['project_id' => $id, 'user_id' => $user['id']]);
@@ -507,6 +511,25 @@ class ResearchController
         }
         flash('success', $action === 'plan' ? "Đã tạo $n bài trong kế hoạch content." : "Đã cập nhật $n từ khóa.");
         redirect("/projects/$id/keywords" . query_with([]));
+    }
+
+    /** Chế độ copy–dán: prompt gom nhóm từ khóa. */
+    public function clusterPrompt(int $id): void
+    {
+        $this->project($id);
+        $prompts = \App\Jobs::clusterPrompt($id, (bool)input('only_missing'));
+        if (!$prompts) {
+            json_response(['ok' => false, 'error' => 'Không có từ khóa nào cần gom nhóm.']);
+        }
+        json_response(['ok' => true, 'prompt' => \App\Services\AiText::manualPrompt($prompts[0], $prompts[1])]);
+    }
+
+    public function clusterPaste(int $id): void
+    {
+        $this->project($id);
+        $n = \App\Jobs::applyClusters($id, (string)($_POST['result'] ?? ''));
+        flash('success', "Đã gán nhóm chủ đề cho $n từ khóa.");
+        redirect("/projects/$id/keywords");
     }
 
     // ------------------------------------------------------------ KPI

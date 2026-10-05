@@ -21,8 +21,8 @@ Web nội bộ (PHP 8.1+ và MySQL) để team SEO quản lý nhiều dự án:
 |---|---|
 | Hosting cPanel | PHP **8.1 trở lên**, có các extension `pdo_mysql`, `curl`, `openssl`, `mbstring`, `simplexml` |
 | Database MySQL | Tạo trong cPanel → *MySQL® Databases* (tạo DB, tạo user, gán user vào DB với **ALL PRIVILEGES**) |
-| Claude API key | https://console.anthropic.com. **Gói Claude Pro không dùng được** cho tool, phải nạp tiền API riêng. |
-| OpenAI API key (tạo ảnh) | https://platform.openai.com. **Gói ChatGPT Plus không dùng được**, phải nạp tiền API riêng. |
+| AI viết bài – chọn 1 trong 3 | **Claude API** (console.anthropic.com), **OpenAI API** (platform.openai.com), hoặc **Thủ công**: copy prompt sang chatgpt.com / claude.ai rồi dán kết quả về (dùng gói Plus/Pro có sẵn, 0 đồng) |
+| OpenAI API key (tạo hình bằng AI, không bắt buộc) | https://platform.openai.com – Designer cũng có thể tự làm hình rồi upload |
 | Google Service Account | Dùng để đồng bộ Google Sheet (hướng dẫn trong trang Cài đặt hệ thống) |
 
 ## 2. Đưa code lên hosting bằng Git™ Version Control

@@ -26,9 +26,37 @@
 <form method="post" action="<?= url('/settings') ?>" enctype="multipart/form-data" autocomplete="off">
     <?= csrf_field() ?>
     <div class="row g-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white"><strong><i class="bi bi-cpu"></i> AI viết bài (outline, bài viết, gom nhóm từ khóa)</strong></div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <?php foreach (\App\Services\AiText::PROVIDERS as $k => $label): ?>
+                            <div class="col-md-4">
+                                <label class="border rounded p-3 d-block h-100 <?= $provider === $k ? 'border-primary bg-primary-subtle' : '' ?>" style="cursor:pointer">
+                                    <input type="radio" name="ai_provider" value="<?= $k ?>" class="form-check-input me-1" <?= $provider === $k ? 'checked' : '' ?>>
+                                    <b><?= e($label) ?></b>
+                                    <div class="small text-muted mt-1"><?= [
+                                        'anthropic' => 'Tự động, chạy nền. Cần Claude API key (trả theo lượng dùng).',
+                                        'openai' => 'Tự động, chạy nền. Dùng chung OpenAI API key với phần tạo hình.',
+                                        'manual' => 'Không cần API, 0 đồng. Tool soạn prompt → bạn dán vào chatgpt.com / claude.ai → dán kết quả về.',
+                                    ][$k] ?></div>
+                                </label>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <p class="small text-muted mt-3 mb-0">Nút <b>"Copy prompt"</b> (làm thủ công với ChatGPT / Claude) luôn có sẵn ở trang bài viết, kể cả khi đang dùng API – tiện khi muốn so sánh hoặc lúc API hết tiền.</p>
+                    <div class="d-flex align-items-center gap-2 mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-ajax-test="<?= url('/settings/test-claude') ?>" data-result="#ai-test"><i class="bi bi-plug"></i> Kiểm tra AI đang chọn</button>
+                        <small class="text-muted">(Lưu cài đặt trước khi kiểm tra)</small>
+                    </div>
+                    <div class="small mt-2" id="ai-test"></div>
+                </div>
+            </div>
+        </div>
         <div class="col-lg-6">
             <div class="card mb-4">
-                <div class="card-header bg-white"><strong><i class="bi bi-stars"></i> Claude (viết bài)</strong></div>
+                <div class="card-header bg-white"><strong><i class="bi bi-stars"></i> Claude API</strong></div>
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">Claude API key</label>
@@ -53,16 +81,12 @@
                             </select>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2 mt-3">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-ajax-test="<?= url('/settings/test-claude') ?>" data-result="#claude-test"><i class="bi bi-plug"></i> Kiểm tra</button>
-                        <?php if ($hasClaude): ?><label class="small"><input type="checkbox" name="clear_anthropic_api_key" value="1"> Xóa key</label><?php endif; ?>
-                    </div>
-                    <div class="small mt-2" id="claude-test"></div>
+                    <?php if ($hasClaude): ?><label class="small mt-3"><input type="checkbox" name="clear_anthropic_api_key" value="1"> Xóa key</label><?php endif; ?>
                 </div>
             </div>
 
             <div class="card mb-4">
-                <div class="card-header bg-white"><strong><i class="bi bi-image"></i> OpenAI (tạo ảnh)</strong></div>
+                <div class="card-header bg-white"><strong><i class="bi bi-image"></i> OpenAI API (tạo hình, và viết bài nếu chọn)</strong></div>
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">OpenAI API key</label>
@@ -71,6 +95,10 @@
                         <?php if ($hasOpenAI): ?><label class="small mt-1"><input type="checkbox" name="clear_openai_api_key" value="1"> Xóa key</label><?php endif; ?>
                     </div>
                     <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label">Model viết bài</label><input name="openai_text_model" class="form-control" value="<?= e(Settings::get('openai_text_model', '')) ?>" placeholder="tên model, vd gpt-5-mini"></div>
+                        <div class="col-md-4"><label class="form-label">Giá input ($/1M token)</label><input type="number" step="0.01" min="0" name="openai_price_in" class="form-control" value="<?= e(Settings::get('openai_price_in', '')) ?>"></div>
+                        <div class="col-md-4"><label class="form-label">Giá output ($/1M token)</label><input type="number" step="0.01" min="0" name="openai_price_out" class="form-control" value="<?= e(Settings::get('openai_price_out', '')) ?>"></div>
+                        <div class="col-12 form-text mt-0">Model và giá viết bài chỉ cần khi chọn OpenAI để viết bài. Xem tên model và bảng giá tại platform.openai.com; giá dùng để thống kê chi phí.</div>
                         <div class="col-md-4"><label class="form-label">Model ảnh</label><input name="image_model" class="form-control" value="<?= e(Settings::get('image_model')) ?>"></div>
                         <div class="col-md-4"><label class="form-label">Kích thước</label>
                             <select name="image_size" class="form-select">

@@ -107,6 +107,8 @@ $routes = [
     ['GET',  '/projects/(\d+)/keywords',          'ResearchController@keywords'],
     ['POST', '/projects/(\d+)/keywords',          'ResearchController@storeKeywords'],
     ['POST', '/projects/(\d+)/keywords/bulk',     'ResearchController@bulkKeywords'],
+    ['GET',  '/projects/(\d+)/keywords/prompt',   'ResearchController@clusterPrompt'],
+    ['POST', '/projects/(\d+)/keywords/paste',    'ResearchController@clusterPaste'],
     ['GET',  '/projects/(\d+)/kpi',               'ResearchController@kpi'],
     ['POST', '/projects/(\d+)/kpi',               'ResearchController@saveKpi'],
 
@@ -134,6 +136,8 @@ $routes = [
     ['POST', '/articles/(\d+)/status',            'ArticleController@status'],
     ['POST', '/articles/(\d+)/delete',            'ArticleController@destroy'],
     ['POST', '/articles/(\d+)/workflow',          'ArticleController@workflow'],
+    ['GET',  '/articles/(\d+)/prompt',            'ArticleController@prompt'],
+    ['POST', '/articles/(\d+)/paste',             'ArticleController@paste'],
     ['POST', '/articles/(\d+)/wp-import',         'ArticleController@wpImport'],
     ['POST', '/articles/(\d+)/images/upload',     'ArticleController@uploadImage'],
     ['POST', '/articles/(\d+)/images/(\d+)/delete', 'ArticleController@deleteImage'],

@@ -5,7 +5,7 @@ namespace App;
 
 use App\Models\Article;
 use App\Models\Project;
-use App\Services\ClaudeService;
+use App\Services\AiText;
 use App\Services\ContentWriter;
 use App\Services\ImageService;
 use App\Services\InternalLinker;
@@ -60,21 +60,43 @@ class Jobs
         return [$a, self::project((int)$a['project_id'])];
     }
 
+    /** Prompt tạo outline: [system, user] */
+    public static function outlinePrompt(array $article, array $project): array
+    {
+        return [ContentWriter::systemPrompt($project), ContentWriter::outlinePrompt($project, $article)];
+    }
+
+    /** Prompt viết bài: [system, user] */
+    public static function writePrompt(array $article, array $project): array
+    {
+        $links = InternalLinker::candidates((int)$project['id'], $article['keyword'], (string)$article['secondary_keywords'], 15, $article['wp_url']);
+        $imageCount = max(0, min(6, (int)$project['images_per_article']));
+        return [ContentWriter::systemPrompt($project), ContentWriter::writePrompt($project, $article, $links, $imageCount)];
+    }
+
     private static function outline(int $articleId, array $ctx): void
     {
         [$article, $project] = self::load($articleId);
-        $claude = ClaudeService::fromSettings();
-        $res = $claude->complete(ContentWriter::systemPrompt($project), ContentWriter::outlinePrompt($project, $article), 8000);
-        Usage::log($ctx, 'anthropic', $res['model'], 'outline', $res['input_tokens'], $res['output_tokens'], 0, Usage::claudeCost($res['model'], $res['input_tokens'], $res['output_tokens']));
+        [$system, $prompt] = self::outlinePrompt($article, $project);
+        $res = AiText::complete($system, $prompt, 8000, $ctx, 'outline');
+        self::applyOutline($articleId, $res['text'], $ctx['user_id'], 'ai_outline');
+    }
 
-        $outline = ContentWriter::tag($res['text'], 'outline') ?? trim($res['text']);
+    /** Lưu outline từ kết quả AI (tự động hoặc dán tay). */
+    public static function applyOutline(int $articleId, string $text, ?int $userId, string $logAction): void
+    {
+        [$article] = self::load($articleId);
+        $outline = ContentWriter::tag($text, 'outline') ?? trim(preg_replace('~^```\w*|```$~m', '', $text) ?? $text);
+        if (mb_strlen($outline) < 20) {
+            throw new \RuntimeException('Outline trống hoặc quá ngắn.');
+        }
         $data = ['outline' => $outline];
-        $title = ContentWriter::tag($res['text'], 'title');
+        $title = ContentWriter::tag($text, 'title');
         if ($title && !$article['title']) {
             $data['title'] = mb_substr(strip_tags($title), 0, 500);
         }
         db()->update('articles', $data, 'id = ?', [$articleId]);
-        Article::log($articleId, 'ai_outline', null, $ctx['user_id']);
+        Article::log($articleId, $logAction, null, $userId);
         if ($article['status'] === 'plan') {
             Article::setStatus($articleId, 'outline');
         }
@@ -84,12 +106,17 @@ class Jobs
     private static function write(int $articleId, array $ctx): void
     {
         [$article, $project] = self::load($articleId);
-        $links = InternalLinker::candidates((int)$project['id'], $article['keyword'], (string)$article['secondary_keywords'], 15, $article['wp_url']);
-        $imageCount = max(0, min(6, (int)$project['images_per_article']));
+        [$system, $prompt] = self::writePrompt($article, $project);
+        $res = AiText::complete($system, $prompt, 16000, $ctx, 'write');
+        self::applyWrite($articleId, $res['text'], $ctx['user_id'], 'ai_write');
+    }
 
-        $res = ClaudeService::fromSettings()->complete(ContentWriter::systemPrompt($project), ContentWriter::writePrompt($project, $article, $links, $imageCount), 16000);
-        Usage::log($ctx, 'anthropic', $res['model'], 'write', $res['input_tokens'], $res['output_tokens'], 0, Usage::claudeCost($res['model'], $res['input_tokens'], $res['output_tokens']));
-        $parsed = ContentWriter::parseArticle($res['text']);
+    /** Lưu bài viết từ kết quả AI (tự động hoặc dán tay). */
+    public static function applyWrite(int $articleId, string $text, ?int $userId, string $logAction): void
+    {
+        [$article, $project] = self::load($articleId);
+        $imageCount = max(0, min(6, (int)$project['images_per_article']));
+        $parsed = ContentWriter::parseArticle($text);
 
         // Gợi ý hình cho Designer: giữ nguyên hình đã có file, chỉ thay các gợi ý chưa làm
         $existing = [];
@@ -125,7 +152,7 @@ class Jobs
             'content' => $content,
             'secondary_keywords' => $article['secondary_keywords'] ?: ($parsed['tags'] ? implode(', ', $parsed['tags']) : null),
         ], 'id = ?', [$articleId]);
-        Article::log($articleId, 'ai_write', 'AI viết bản nháp, cần Content kiểm tra và chỉnh sửa trước khi gửi duyệt.', $ctx['user_id']);
+        Article::log($articleId, $logAction, 'Bản nháp cần Content kiểm tra và chỉnh sửa trước khi gửi duyệt.', $userId);
     }
 
     private static function images(int $articleId, array $ctx, bool $onlyMissing): void
@@ -343,11 +370,22 @@ class Jobs
     /** AI gom bộ từ khóa thành các nhóm chủ đề (topic cluster). */
     private static function clusterKeywords(int $projectId, array $ctx, bool $onlyMissing): void
     {
+        $prompts = self::clusterPrompt($projectId, $onlyMissing);
+        if (!$prompts) {
+            return;
+        }
+        $res = AiText::complete($prompts[0], $prompts[1], 16000, $ctx, 'cluster');
+        self::applyClusters($projectId, $res['text']);
+    }
+
+    /** Prompt gom nhóm từ khóa: [system, user] hoặc null nếu không có từ khóa cần gom. */
+    public static function clusterPrompt(int $projectId, bool $onlyMissing): ?array
+    {
         $project = self::project($projectId);
         $where = $onlyMissing ? " AND (cluster IS NULL OR cluster = '')" : '';
         $rows = db()->fetchAll("SELECT id, keyword, volume FROM keywords WHERE project_id = ?$where ORDER BY volume DESC LIMIT 600", [$projectId]);
         if (!$rows) {
-            return;
+            return null;
         }
         $existing = array_column(db()->fetchAll(
             "SELECT DISTINCT cluster FROM keywords WHERE project_id = ? AND cluster IS NOT NULL AND cluster <> ''",
@@ -369,27 +407,34 @@ Trả lời đúng định dạng, mỗi dòng một từ khóa, giữ nguyên t
 từ khóa | tên nhóm
 </clusters>
 TXT;
-        $res = ClaudeService::fromSettings()->complete(ContentWriter::systemPrompt($project), $prompt, 16000);
-        Usage::log($ctx, 'anthropic', $res['model'], 'cluster', $res['input_tokens'], $res['output_tokens'], 0, Usage::claudeCost($res['model'], $res['input_tokens'], $res['output_tokens']));
+        return [ContentWriter::systemPrompt($project), $prompt];
+    }
+
+    /** Lưu kết quả gom nhóm (tự động hoặc dán tay). Trả về số từ khóa được gán nhóm. */
+    public static function applyClusters(int $projectId, string $text): int
+    {
         $map = [];
-        foreach ($rows as $r) {
+        foreach (db()->fetchAll('SELECT id, keyword FROM keywords WHERE project_id = ?', [$projectId]) as $r) {
             $map[mb_strtolower(trim($r['keyword']))] = (int)$r['id'];
         }
         $updated = 0;
-        foreach (preg_split('~\R~', (string)(ContentWriter::tag($res['text'], 'clusters') ?? $res['text'])) as $line) {
+        foreach (preg_split('~\R~', (string)(ContentWriter::tag($text, 'clusters') ?? $text)) as $line) {
             $parts = array_map('trim', explode('|', $line));
             if (count($parts) < 2) {
                 continue;
             }
-            $kw = mb_strtolower(preg_replace('~\s*\(\d+\)$~', '', $parts[0]) ?? $parts[0]);
-            if (isset($map[$kw]) && $parts[1] !== '') {
-                db()->update('keywords', ['cluster' => mb_substr($parts[1], 0, 190)], 'id = ?', [$map[$kw]]);
+            // Bỏ gạch đầu dòng / dấu ` do ChatGPT thêm, và "(volume)" ở cuối
+            $kw = mb_strtolower(trim(preg_replace('~^[\s\-*•`]+|\s*\(\d+\)$~u', '', $parts[0]) ?? $parts[0]));
+            $group = trim($parts[1], " \t`*");
+            if (isset($map[$kw]) && $group !== '') {
+                db()->update('keywords', ['cluster' => mb_substr($group, 0, 190)], 'id = ?', [$map[$kw]]);
                 $updated++;
             }
         }
         if ($updated === 0) {
-            throw new \RuntimeException('AI không trả về kết quả gom nhóm hợp lệ, vui lòng thử lại.');
+            throw new \RuntimeException('Không đọc được kết quả gom nhóm hợp lệ (mỗi dòng: từ khóa | tên nhóm).');
         }
+        return $updated;
     }
 
     private static function sheetPush(int $articleId): void
