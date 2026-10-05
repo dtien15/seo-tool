@@ -35,8 +35,10 @@ Web nội bộ (PHP 8.1+ và MySQL) để team SEO quản lý nhiều dự án:
    - *Repository Path*: **thư mục web** (Document Root) của domain/subdomain chạy tool, thư mục phải trống.
 3. Cài thư viện (1 lần): cPanel → *Terminal* → `cd ~/<thư-mục-web> && composer install --no-dev`
 4. Cấu hình database, chọn 1 trong 2 cách:
-   - **Form cài đặt:** mở website → điền MySQL và tạo tài khoản admin (tool tự tạo `config.php`).
-   - **Tự tạo file:** trong File Manager copy `config.sample.php` thành `config.php`, điền thông tin MySQL và `app_key` (chuỗi ngẫu nhiên ≥ 32 ký tự, không đổi về sau). Mở website → tạo tài khoản admin đầu tiên.
+   - **Tự tạo file:** trong File Manager copy `config.sample.php` thành `config.php`, điền `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `APP_URL`. Mở website → tạo tài khoản admin đầu tiên.
+   - **Form cài đặt:** chưa có `config.php` thì mở website sẽ hiện form, điền xong tool tự tạo `config.php`.
+
+   Khóa mã hóa API key / mật khẩu WordPress được tự tạo ở `storage/app.key`. **Sao lưu file này cùng database**: mất file thì phải nhập lại các key và mật khẩu.
 
 ### Cập nhật phiên bản mới
 
@@ -110,5 +112,6 @@ app/views/             Giao diện (Bootstrap 5)
 database/migrations/   Cấu trúc database (tự chạy)
 assets/                CSS/JS
 uploads/               Ảnh AI tạo ra (không đưa lên Git)
-config.php             Do trình cài đặt tạo – KHÔNG đưa lên Git
+config.php             Cấu hình database (tự tạo từ config.sample.php) – KHÔNG đưa lên Git
+storage/app.key        Khóa mã hóa tự sinh – KHÔNG đưa lên Git, nhớ sao lưu
 ```

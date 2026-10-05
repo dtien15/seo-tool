@@ -42,8 +42,35 @@ function url(string $path = '/'): string
 
 function absolute_url(string $path = '/'): string
 {
-    $appUrl = rtrim((string)config('app_url', ''), '/');
-    return $appUrl . '/' . ltrim($path, '/');
+    return app_url() . '/' . ltrim($path, '/');
+}
+
+/**
+ * Địa chỉ gốc của website. Lấy từ APP_URL trong config.php; nếu không khai báo thì tự nhận
+ * từ request (và nhớ lại trong settings để cron worker dùng khi tạo link ảnh).
+ */
+function app_url(): string
+{
+    $url = rtrim((string)config('app_url', ''), '/');
+    if ($url !== '') {
+        return $url;
+    }
+    if (!empty($_SERVER['HTTP_HOST'])) {
+        $https = (($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+        $url = ($https ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . base_path_url();
+        try {
+            if (is_installed() && \App\Settings::get('detected_app_url', '') !== $url) {
+                \App\Settings::set('detected_app_url', $url);
+            }
+        } catch (\Throwable) {
+        }
+        return $url;
+    }
+    try {
+        return rtrim((string)\App\Settings::get('detected_app_url', ''), '/');
+    } catch (\Throwable) {
+        return '';
+    }
 }
 
 function asset(string $path): string

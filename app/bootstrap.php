@@ -23,7 +23,25 @@ spl_autoload_register(function (string $class): void {
 
 require BASE_PATH . '/app/helpers.php';
 
-$GLOBALS['__config'] = is_file(BASE_PATH . '/config.php') ? require BASE_PATH . '/config.php' : null;
+$GLOBALS['__config'] = null;
+if (is_file(BASE_PATH . '/config.php')) {
+    $__cfg = require BASE_PATH . '/config.php';
+    if (is_array($__cfg)) {
+        $GLOBALS['__config'] = $__cfg;              // kiểu cũ: return [...]
+    } elseif (defined('DB_HOST')) {
+        $GLOBALS['__config'] = [                    // kiểu define('DB_HOST', ...)
+            'db_host' => DB_HOST,
+            'db_port' => defined('DB_PORT') ? DB_PORT : 3306,
+            'db_name' => DB_NAME,
+            'db_user' => DB_USER,
+            'db_pass' => DB_PASS,
+            'app_url' => defined('APP_URL') ? APP_URL : '',
+            'app_key' => defined('APP_KEY') ? APP_KEY : '',
+            'debug' => defined('APP_DEBUG') && APP_DEBUG,
+        ];
+    }
+    unset($__cfg);
+}
 
 if (config('debug')) {
     ini_set('display_errors', '1');

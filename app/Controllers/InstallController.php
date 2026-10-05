@@ -49,7 +49,7 @@ class InstallController
                     'db_name' => $data['db_name'],
                     'db_user' => $data['db_user'],
                     'db_pass' => $dbPass,
-                    'app_key' => base64_encode(random_bytes(32)),
+                    'app_key' => '',   // khóa mã hóa tự tạo ở storage/app.key
                     'debug' => false,
                 ];
                 try {
@@ -64,7 +64,18 @@ class InstallController
                             'role' => 'admin',
                         ]);
                     }
-                    $php = "<?php\n// File cấu hình – KHÔNG đưa lên Git.\nreturn " . var_export($config, true) . ";\n";
+                    $q = fn($v) => var_export($v, true);
+                    $php = "<?php\n"
+                        . "// =====================================================================\n"
+                        . "// Cấu hình kết nối database - tạo bởi trình cài đặt. KHÔNG đưa lên Git.\n"
+                        . "// =====================================================================\n"
+                        . "define('DB_HOST', " . $q($config['db_host']) . ");\n"
+                        . ($config['db_port'] !== 3306 ? "define('DB_PORT', " . $config['db_port'] . ");\n" : '')
+                        . "define('DB_NAME', " . $q($config['db_name']) . ");\n"
+                        . "define('DB_USER', " . $q($config['db_user']) . ");\n"
+                        . "define('DB_PASS', " . $q($config['db_pass']) . ");\n\n"
+                        . "// Địa chỉ website chạy tool\n"
+                        . "define('APP_URL', " . $q($config['app_url']) . ");\n";
                     if (file_put_contents(BASE_PATH . '/config.php', $php) === false) {
                         throw new \RuntimeException('Không ghi được file config.php');
                     }

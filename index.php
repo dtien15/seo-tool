@@ -41,6 +41,11 @@ try {
     abort(500, 'Không kết nối được cơ sở dữ liệu. Kiểm tra lại config.php.');
 }
 
+// config.php không khai báo APP_URL: ghi nhớ địa chỉ web để cron worker dùng
+if ((string)config('app_url', '') === '') {
+    app_url();
+}
+
 // Tự tạo config.php bằng tay: chưa có tài khoản nào thì tạo admin đầu tiên
 if ($path !== '/setup' && !db()->value('SELECT 1 FROM users LIMIT 1')) {
     redirect('/setup');
