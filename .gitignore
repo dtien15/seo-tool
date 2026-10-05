@@ -1,0 +1,11 @@
+/config.php
+/vendor/
+/uploads/*
+!/uploads/.htaccess
+/storage/logs/*
+!/storage/logs/.gitkeep
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+/.claude/

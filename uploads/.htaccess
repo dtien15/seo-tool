@@ -1,0 +1,5 @@
+# Thư mục ảnh: chỉ cho xem ảnh, không cho chạy script
+Options -Indexes
+<FilesMatch "\.(?i:php\d?|phtml|phar|pl|py|cgi|sh|shtml)$">
+    Require all denied
+</FilesMatch>
