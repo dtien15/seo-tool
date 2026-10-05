@@ -11,13 +11,18 @@
             <div class="col-md-3"><label class="form-label">Email đăng nhập</label><input type="email" name="email" class="form-control" required></div>
             <div class="col-md-2"><label class="form-label">Mật khẩu</label><input name="password" class="form-control" minlength="8" required value="<?= e(substr(random_token(6), 0, 10)) ?>"></div>
             <div class="col-md-2"><label class="form-label">Vai trò</label>
-                <select name="role" class="form-select"><option value="seoer">SEOer</option><option value="admin">Quản trị viên</option></select></div>
+                <select name="role" class="form-select"><?php foreach (user_roles() as $k => [$label]): ?><option value="<?= $k ?>" <?= $k === 'seo' ? 'selected' : '' ?>><?= $label ?></option><?php endforeach; ?></select></div>
             <div class="col-md-2"><label class="form-label">Hạn mức $/tháng</label><input type="number" step="0.5" min="0" name="monthly_budget_usd" class="form-control" placeholder="Mặc định"></div>
             <div class="col-12"><button class="btn btn-primary">Tạo tài khoản</button></div>
         </form>
     </div></div>
 </div>
 
+<div class="row g-2 mb-3 small">
+    <?php foreach (user_roles() as $k => [$label, $desc]): ?>
+        <div class="col-md"><div class="border rounded p-2 h-100 bg-white"><b><?= e($label) ?></b><div class="text-muted"><?= e($desc) ?></div></div></div>
+    <?php endforeach; ?>
+</div>
 <div class="card">
     <div class="table-responsive">
         <table class="table align-middle mb-0">
@@ -26,7 +31,7 @@
             <?php foreach ($users as $u): ?>
                 <tr class="<?= $u['is_active'] ? '' : 'opacity-50' ?>">
                     <td><div class="fw-medium"><?= e($u['name']) ?></div><small class="text-muted"><?= e($u['email']) ?></small></td>
-                    <td><?= $u['role'] === 'admin' ? '<span class="badge text-bg-dark">Admin</span>' : '<span class="badge text-bg-light border">SEOer</span>' ?>
+                    <td><span class="badge <?= $u['role'] === 'admin' ? 'text-bg-dark' : ($u['role'] === 'leader' ? 'text-bg-primary' : 'text-bg-light border') ?>"><?= e(role_label($u['role'])) ?></span>
                         <?= $u['is_active'] ? '' : '<span class="badge text-bg-danger">Đã khóa</span>' ?></td>
                     <td><?= (int)$u['project_count'] ?></td>
                     <td><?= money($u['month_cost']) ?><?php if ($u['monthly_budget_usd'] !== null): ?> <small class="text-muted">/ <?= money($u['monthly_budget_usd']) ?></small><?php endif; ?></td>
@@ -40,8 +45,7 @@
                             <div class="col-md-3"><label class="form-label small">Họ tên</label><input name="name" class="form-control form-control-sm" value="<?= e($u['name']) ?>"></div>
                             <div class="col-md-2"><label class="form-label small">Vai trò</label>
                                 <select name="role" class="form-select form-select-sm">
-                                    <option value="seoer" <?= $u['role'] === 'seoer' ? 'selected' : '' ?>>SEOer</option>
-                                    <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Quản trị viên</option>
+                                    <?php foreach (user_roles() as $k => [$label]): ?><option value="<?= $k ?>" <?= $u['role'] === $k ? 'selected' : '' ?>><?= $label ?></option><?php endforeach; ?>
                                 </select></div>
                             <div class="col-md-2"><label class="form-label small">Hạn mức $/tháng</label><input type="number" step="0.5" min="0" name="monthly_budget_usd" class="form-control form-control-sm" value="<?= e($u['monthly_budget_usd']) ?>" placeholder="Mặc định"></div>
                             <div class="col-md-2"><label class="form-label small">Đặt lại mật khẩu</label><input name="password" class="form-control form-control-sm" placeholder="Để trống = giữ"></div>

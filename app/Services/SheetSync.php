@@ -195,7 +195,7 @@ class SheetSync
             $newId = Article::create($project, [
                 'keyword' => $data['keyword'],
                 'title' => $data['title'] !== '' ? $data['title'] : null,
-                'status' => status_from_label($data['status']) ?? 'idea',
+                'status' => status_from_label($data['status']) ?? 'plan',
                 'assigned_to' => $project['owner_id'],
             ]);
             db()->update('articles', ['sheet_row' => $rowNumber], 'id = ?', [$newId]);
@@ -212,7 +212,7 @@ class SheetSync
 
         $updated = false;
         // Từ khóa / tiêu đề chỉ nhận từ sheet khi bài còn ở giai đoạn ý tưởng.
-        if ($article['status'] === 'idea' && empty($article['content'])) {
+        if ($article['status'] === 'plan' && empty($article['content'])) {
             $fields = [];
             if ($data['keyword'] !== '' && $data['keyword'] !== $article['keyword']) {
                 $fields['keyword'] = mb_substr($data['keyword'], 0, 255);

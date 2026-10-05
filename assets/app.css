@@ -53,3 +53,16 @@ body.guest { background: linear-gradient(135deg, #eef2ff, #f5f6fa); min-height: 
 .table > :not(caption) > * > * { padding-top: .6rem; padding-bottom: .6rem; }
 .status-chips .btn { border: 1px solid #e5e7eb; }
 .tox-tinymce { border: 0 !important; border-radius: 0 0 .75rem .75rem !important; }
+
+/* Quy trình */
+.project-tabs { scrollbar-width: thin; }
+.process-steps .step-dot { width: 28px; height: 28px; border-radius: 50%; background: #eef0f4; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 600; flex-shrink: 0; }
+.process-steps .step-dot.done { background: #198754; color: #fff; }
+.stage-bar { display: flex; gap: 4px; overflow-x: auto; }
+.stage-bar .stage { flex: 1 0 auto; text-align: center; font-size: .75rem; padding: .4rem .6rem; background: #eef0f4; color: #6b7280; border-radius: .4rem; white-space: nowrap; }
+.stage-bar .stage.done { background: #d1e7dd; color: #0f5132; }
+.stage-bar .stage.current { background: var(--brand); color: #fff; font-weight: 600; }
+.workflow-card { background: #f8f9ff; }
+.border-dashed { border-style: dashed !important; }
+.history .list-group-item { padding-top: .45rem; padding-bottom: .45rem; }
+.kpi-table input { min-width: 80px; }

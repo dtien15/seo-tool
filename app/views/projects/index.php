@@ -1,12 +1,13 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h4 mb-0">Dự án</h1>
-    <a href="<?= url('/projects/new') ?>" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Tạo dự án</a>
+    <?php if (\App\Auth::is('seo', 'leader')): ?><a href="<?= url('/projects/new') ?>" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Tạo dự án</a><?php endif; ?>
 </div>
+<?php $isWorker = in_array(\App\Auth::role(), ['content', 'design'], true); ?>
 
 <div class="row g-3">
     <?php foreach ($projects as $p): ?>
         <div class="col-md-6 col-xl-4">
-            <a href="<?= url('/projects/' . $p['id']) ?>" class="card project-card h-100 text-decoration-none text-body">
+            <a href="<?= url('/projects/' . $p['id'] . ($isWorker ? '' : '/overview')) ?>" class="card project-card h-100 text-decoration-none text-body">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <h2 class="h6 mb-1"><?= e($p['name']) ?></h2>

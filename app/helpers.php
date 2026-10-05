@@ -172,18 +172,44 @@ function random_token(int $bytes = 24): string
     return bin2hex(random_bytes($bytes));
 }
 
-/** Trạng thái bài viết: key => [nhãn hiển thị (cũng dùng trên Google Sheet), màu badge] */
+/**
+ * Trạng thái bài viết theo quy trình:
+ * Kế hoạch → Outline → TP duyệt outline → Viết bài → SEO + TP duyệt bài → Làm hình → SEO + TP duyệt hình → Sẵn sàng đăng → Đã đăng
+ * key => [nhãn hiển thị (cũng dùng trên Google Sheet), màu badge]
+ */
 function article_statuses(): array
 {
     return [
-        'idea'      => ['Ý tưởng', 'secondary'],
-        'writing'   => ['Đang viết', 'info'],
-        'review'    => ['Chờ duyệt', 'warning'],
-        'revise'    => ['Cần sửa', 'danger'],
-        'approved'  => ['Đã duyệt', 'primary'],
-        'wp_draft'  => ['Nháp trên WP', 'dark'],
-        'published' => ['Đã đăng', 'success'],
+        'plan'           => ['Kế hoạch', 'secondary'],
+        'outline'        => ['Đang làm outline', 'info'],
+        'outline_review' => ['Chờ TP duyệt outline', 'warning'],
+        'writing'        => ['Đang viết', 'info'],
+        'content_review' => ['Chờ duyệt bài', 'warning'],
+        'revise'         => ['Cần sửa bài', 'danger'],
+        'design'         => ['Đang làm hình', 'info'],
+        'image_review'   => ['Chờ duyệt hình', 'warning'],
+        'image_revise'   => ['Cần sửa hình', 'danger'],
+        'ready'          => ['Sẵn sàng đăng', 'primary'],
+        'wp_draft'       => ['Nháp trên WP', 'dark'],
+        'published'      => ['Đã đăng', 'success'],
     ];
+}
+
+/** Vai trò tài khoản: key => [tên, mô tả] */
+function user_roles(): array
+{
+    return [
+        'admin'   => ['Quản trị viên', 'Toàn quyền, cài đặt hệ thống'],
+        'leader'  => ['Trưởng phòng', 'Xem mọi dự án, duyệt outline / bài / hình'],
+        'seo'     => ['SEO', 'Quản lý dự án, nghiên cứu, kế hoạch, duyệt phía SEO, đăng bài'],
+        'content' => ['Content', 'Viết / sửa bài được giao'],
+        'design'  => ['Design', 'Làm hình cho bài được giao'],
+    ];
+}
+
+function role_label(?string $role): string
+{
+    return user_roles()[$role ?? ''][0] ?? (string)$role;
 }
 
 function status_label(string $status): string

@@ -7,12 +7,12 @@ $nav = [
     ['/', 'bi-speedometer2', 'Tổng quan'],
     ['/projects', 'bi-folder2-open', 'Dự án'],
 ];
-$adminNav = [
+$adminNav = Auth::isAdmin() ? [
     ['/users', 'bi-people', 'Tài khoản'],
     ['/usage', 'bi-graph-up', 'Chi phí AI'],
     ['/jobs', 'bi-list-task', 'Hàng đợi'],
     ['/settings', 'bi-gear', 'Cài đặt hệ thống'],
-];
+] : [['/usage', 'bi-graph-up', 'Chi phí AI']];
 $isActive = fn(string $href) => $href === '/' ? $current === '/' : str_starts_with($current, $href);
 ?>
 <!doctype html>
@@ -34,7 +34,7 @@ $isActive = fn(string $href) => $href === '/' ? $current === '/' : str_starts_wi
             <?php foreach ($nav as [$href, $icon, $label]): ?>
                 <a class="nav-link <?= $isActive($href) ? 'active' : '' ?>" href="<?= url($href) ?>"><i class="bi <?= $icon ?>"></i> <?= e($label) ?></a>
             <?php endforeach; ?>
-            <?php if (Auth::isAdmin()): ?>
+            <?php if (Auth::is('leader')): ?>
                 <div class="nav-heading">Quản trị</div>
                 <?php foreach ($adminNav as [$href, $icon, $label]): ?>
                     <a class="nav-link <?= $isActive($href) ? 'active' : '' ?>" href="<?= url($href) ?>"><i class="bi <?= $icon ?>"></i> <?= e($label) ?></a>
@@ -44,7 +44,7 @@ $isActive = fn(string $href) => $href === '/' ? $current === '/' : str_starts_wi
         <div class="mt-auto user-box">
             <a href="<?= url('/profile') ?>" class="text-decoration-none d-block text-truncate">
                 <i class="bi bi-person-circle"></i> <?= e($me['name'] ?? '') ?>
-                <small class="d-block text-white-50"><?= ($me['role'] ?? '') === 'admin' ? 'Quản trị viên' : 'SEOer' ?></small>
+                <small class="d-block text-white-50"><?= e(role_label($me['role'] ?? '')) ?></small>
             </a>
             <form method="post" action="<?= url('/logout') ?>" class="mt-2">
                 <?= csrf_field() ?>

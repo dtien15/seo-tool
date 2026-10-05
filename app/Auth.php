@@ -34,6 +34,34 @@ class Auth
         return (self::user()['role'] ?? '') === 'admin';
     }
 
+    public static function role(): string
+    {
+        return (string)(self::user()['role'] ?? '');
+    }
+
+    /** Admin được coi như có mọi vai trò. */
+    public static function is(string ...$roles): bool
+    {
+        $role = self::role();
+        return $role === 'admin' || in_array($role, $roles, true);
+    }
+
+    /** Admin và Trưởng phòng xem được mọi dự án. */
+    public static function seesAllProjects(?array $user = null): bool
+    {
+        $user ??= self::user();
+        return in_array($user['role'] ?? '', ['admin', 'leader'], true);
+    }
+
+    public static function requireRole(string ...$roles): array
+    {
+        $u = self::requireLogin();
+        if (!self::is(...$roles)) {
+            abort(403, 'Vai trò của bạn không thực hiện được thao tác này.');
+        }
+        return $u;
+    }
+
     public static function attempt(string $email, string $password): bool
     {
         $u = db()->fetch('SELECT * FROM users WHERE email = ?', [mb_strtolower(trim($email))]);

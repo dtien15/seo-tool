@@ -26,6 +26,7 @@ $v = fn(string $k, $d = '') => e($p[$k] ?? $d);
                         <div class="col-12"><label class="form-label">Từ khóa chính của website</label><textarea name="main_keywords" class="form-control" rows="2" placeholder="Mỗi từ khóa cách nhau dấu phẩy"><?= $v('main_keywords') ?></textarea></div>
                         <div class="col-12"><label class="form-label">Quy tắc nội dung bắt buộc</label><textarea name="content_rules" class="form-control" rows="4" placeholder="vd: Không nhắc tên đối thủ; cuối bài có CTA gọi hotline 0909xxx; không cam kết hiệu quả 100%..."><?= $v('content_rules') ?></textarea></div>
                         <div class="col-md-6"><label class="form-label">Số từ mặc định mỗi bài</label><input type="number" name="word_count" class="form-control" value="<?= $v('word_count', 1500) ?>" min="300" max="6000" step="100"></div>
+                        <div class="col-md-6"><label class="form-label">Kiểm tra & tối ưu lại bài cũ sau (ngày)</label><input type="number" name="reoptimize_days" class="form-control" value="<?= $v('reoptimize_days', 30) ?>" min="7" max="365"></div>
                         <div class="col-md-6"><label class="form-label">Số ảnh trong thân bài</label><input type="number" name="images_per_article" class="form-control" value="<?= $v('images_per_article', 2) ?>" min="0" max="6"><div class="form-text">Chưa tính ảnh đại diện (luôn có).</div></div>
                     </div>
                 </div>
@@ -68,7 +69,7 @@ $v = fn(string $k, $d = '') => e($p[$k] ?? $d);
                     </div>
                     <div class="form-check mt-3">
                         <input class="form-check-input" type="checkbox" name="auto_publish" value="1" id="auto_publish" <?= !empty($p['auto_publish']) ? 'checked' : '' ?>>
-                        <label class="form-check-label" for="auto_publish">Tự động đẩy lên WordPress khi bài chuyển sang <b>Đã duyệt</b> (kể cả đổi trên Google Sheet)</label>
+                        <label class="form-check-label" for="auto_publish">Tự động đẩy lên WordPress khi bài được duyệt hình xong (<b>Sẵn sàng đăng</b>)</label>
                     </div>
                 </div>
             </div>
@@ -91,10 +92,10 @@ $v = fn(string $k, $d = '') => e($p[$k] ?? $d);
 
 <?php if ($isEdit): ?>
     <div class="row g-4 mt-1">
-        <?php if (\App\Auth::isAdmin()): ?>
+        <?php if (\App\Auth::is('leader')): ?>
             <div class="col-lg-7">
                 <div class="card">
-                    <div class="card-header bg-white"><strong><i class="bi bi-people"></i> Thành viên dự án</strong> <small class="text-muted">(chỉ admin)</small></div>
+                    <div class="card-header bg-white"><strong><i class="bi bi-people"></i> Thành viên dự án</strong> <small class="text-muted">(Admin / TP)</small></div>
                     <div class="card-body">
                         <form method="post" action="<?= url('/projects/' . $p['id'] . '/members') ?>">
                             <?= csrf_field() ?>
@@ -106,13 +107,13 @@ $v = fn(string $k, $d = '') => e($p[$k] ?? $d);
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <label class="form-label">Chia sẻ thêm cho</label>
+                            <label class="form-label">Chia sẻ thêm cho <small class="text-muted">(Content / Design tự thấy dự án khi được giao bài)</small></label>
                             <?php $memberIds = array_map(fn($m) => (int)$m['id'], $members); ?>
                             <div class="member-list">
                                 <?php foreach ($allUsers as $u): if ((int)$u['id'] === (int)$p['owner_id']) continue; ?>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="members[]" value="<?= $u['id'] ?>" id="m<?= $u['id'] ?>" <?= in_array((int)$u['id'], $memberIds, true) ? 'checked' : '' ?>>
-                                        <label class="form-check-label" for="m<?= $u['id'] ?>"><?= e($u['name']) ?> <small class="text-muted"><?= e($u['email']) ?></small></label>
+                                        <label class="form-check-label" for="m<?= $u['id'] ?>"><?= e($u['name']) ?> <small class="text-muted"><?= e(role_label($u['role'])) ?> · <?= e($u['email']) ?></small></label>
                                     </div>
                                 <?php endforeach; ?>
                             </div>

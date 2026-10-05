@@ -21,6 +21,11 @@ class Article
             abort(404, 'Bài viết không tồn tại.');
         }
         $project = Project::findOrFail((int)$article['project_id']);
+        $user = \App\Auth::user();
+        $field = ['content' => 'writer_id', 'design' => 'designer_id'][$user['role']] ?? null;
+        if ($field && (int)$article[$field] !== (int)$user['id']) {
+            abort(403, 'Bài viết này chưa được giao cho bạn.');
+        }
         return [$article, $project];
     }
 
@@ -39,7 +44,13 @@ class Article
             'notes' => $data['notes'] ?? null,
             'word_count' => $data['word_count'] ?? null,
             'title' => $data['title'] ?? null,
-            'status' => $data['status'] ?? 'idea',
+            'status' => $data['status'] ?? 'plan',
+            'type' => $data['type'] ?? 'new',
+            'writer_id' => $data['writer_id'] ?? null,
+            'designer_id' => $data['designer_id'] ?? null,
+            'cluster' => $data['cluster'] ?? null,
+            'planned_date' => $data['planned_date'] ?? null,
+            'wp_url' => $data['wp_url'] ?? null,
             'status_changed_at' => now(),
         ]);
     }
@@ -66,8 +77,15 @@ class Article
         if (!$fromSheet) {
             self::syncToSheet($id);
         }
-        if ($status === 'approved' && $project['auto_publish'] && $article['content']) {
-            Queue::articleTask('publish', $id, null);
+        if ($fromSheet) {
+            self::log($id, 'status', 'Đổi trạng thái trên Google Sheet: ' . status_label($article['status']) . ' → ' . status_label($status), null);
+        }
+        if ($status === 'ready' && $project['auto_publish'] && $article['content']) {
+            try {
+                Queue::articleTask('publish', $id, null);
+            } catch (\RuntimeException $e) {
+                log_error('Auto publish #' . $id . ': ' . $e->getMessage());
+            }
         }
     }
 
@@ -90,6 +108,26 @@ class Article
         }
     }
 
+    /** Ghi lịch sử xử lý bài viết. */
+    public static function log(int $id, string $action, ?string $note = null, ?int $userId = -1): void
+    {
+        db()->insert('article_logs', [
+            'article_id' => $id,
+            'user_id' => $userId === -1 ? \App\Auth::id() : $userId,
+            'action' => $action,
+            'note' => $note,
+        ]);
+    }
+
+    public static function logs(int $id): array
+    {
+        return db()->fetchAll(
+            'SELECT l.*, u.name AS user_name, u.role AS user_role FROM article_logs l LEFT JOIN users u ON u.id = l.user_id
+             WHERE l.article_id = ? ORDER BY l.id DESC LIMIT 100',
+            [$id]
+        );
+    }
+
     public static function delete(int $id): void
     {
         foreach (self::images($id) as $img) {
@@ -98,6 +136,9 @@ class Article
             }
         }
         db()->query('DELETE FROM article_images WHERE article_id = ?', [$id]);
+        db()->query('DELETE FROM article_logs WHERE article_id = ?', [$id]);
+        db()->query('DELETE FROM article_approvals WHERE article_id = ?', [$id]);
+        db()->query('UPDATE keywords SET article_id = NULL WHERE article_id = ?', [$id]);
         db()->query('DELETE FROM articles WHERE id = ?', [$id]);
     }
 

@@ -12,7 +12,7 @@ class SheetController
 {
     public function show(int $id): void
     {
-        Auth::requireLogin();
+        Auth::requireRole('seo', 'leader');
         $project = Project::findOrFail($id);
         view('projects/sheet', [
             'pageTitle' => 'Google Sheet – ' . $project['name'],
@@ -26,7 +26,7 @@ class SheetController
 
     public function save(int $id): void
     {
-        Auth::requireLogin();
+        Auth::requireRole('seo', 'leader');
         Project::findOrFail($id);
         $raw = (string)input('gsheet_id', '');
         // Cho phép dán cả link Google Sheet
@@ -45,7 +45,7 @@ class SheetController
 
     public function init(int $id): void
     {
-        Auth::requireLogin();
+        Auth::requireRole('seo', 'leader');
         $project = Project::findOrFail($id);
         if (!Project::hasSheet($project)) {
             throw new \RuntimeException('Chưa nhập Google Sheet.');
@@ -57,7 +57,7 @@ class SheetController
 
     public function sync(int $id): void
     {
-        Auth::requireLogin();
+        Auth::requireRole('seo', 'leader');
         $project = Project::findOrFail($id);
         if (!Project::hasSheet($project)) {
             throw new \RuntimeException('Chưa nhập Google Sheet.');

@@ -20,10 +20,14 @@ class Project
         if (!$user) {
             return false;
         }
-        if ($user['role'] === 'admin' || (int)$project['owner_id'] === (int)$user['id']) {
+        if (Auth::seesAllProjects($user) || (int)$project['owner_id'] === (int)$user['id']) {
             return true;
         }
-        return (bool)db()->value('SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ?', [$project['id'], $user['id']]);
+        if (db()->value('SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ?', [$project['id'], $user['id']])) {
+            return true;
+        }
+        // Content / Design: thấy dự án có bài được giao cho mình
+        return (bool)db()->value('SELECT 1 FROM articles WHERE project_id = ? AND (writer_id = ? OR designer_id = ?) LIMIT 1', [$project['id'], $user['id'], $user['id']]);
     }
 
     /** Lấy dự án và kiểm tra quyền, nếu không có thì 404/403. */
@@ -44,15 +48,16 @@ class Project
         $sql = 'SELECT p.*, u.name AS owner_name,
                   (SELECT COUNT(*) FROM articles a WHERE a.project_id = p.id) AS article_count,
                   (SELECT COUNT(*) FROM articles a WHERE a.project_id = p.id AND a.status = \'published\') AS published_count,
-                  (SELECT COUNT(*) FROM articles a WHERE a.project_id = p.id AND a.status = \'review\') AS review_count,
+                  (SELECT COUNT(*) FROM articles a WHERE a.project_id = p.id AND a.status IN (\'outline_review\', \'content_review\', \'image_review\')) AS review_count,
                   (SELECT COUNT(*) FROM internal_links l WHERE l.project_id = p.id) AS link_count
                 FROM projects p JOIN users u ON u.id = p.owner_id';
-        if ($user['role'] === 'admin') {
+        if (Auth::seesAllProjects($user)) {
             return db()->fetchAll($sql . ' ORDER BY p.updated_at DESC');
         }
         return db()->fetchAll(
-            $sql . ' WHERE p.owner_id = ? OR p.id IN (SELECT project_id FROM project_members WHERE user_id = ?) ORDER BY p.updated_at DESC',
-            [$user['id'], $user['id']]
+            $sql . ' WHERE p.owner_id = ? OR p.id IN (SELECT project_id FROM project_members WHERE user_id = ?)
+                     OR p.id IN (SELECT project_id FROM articles WHERE writer_id = ? OR designer_id = ?) ORDER BY p.updated_at DESC',
+            [$user['id'], $user['id'], $user['id'], $user['id']]
         );
     }
 
@@ -64,13 +69,30 @@ class Project
         );
     }
 
-    /** Người có thể được giao bài: chủ dự án + thành viên. */
+    /** SEO phụ trách bài: chủ dự án + thành viên dự án. */
     public static function assignableUsers(array $project): array
     {
         return db()->fetchAll(
             'SELECT id, name FROM users WHERE is_active = 1 AND (id = ? OR id IN (SELECT user_id FROM project_members WHERE project_id = ?)) ORDER BY name',
             [$project['owner_id'], $project['id']]
         );
+    }
+
+    /** Người dùng đang hoạt động theo vai trò (để giao viết bài / làm hình). */
+    public static function usersByRole(string $role): array
+    {
+        return db()->fetchAll('SELECT id, name FROM users WHERE is_active = 1 AND role = ? ORDER BY name', [$role]);
+    }
+
+    /** Content / Design chỉ thấy bài được giao; vai trò khác thấy tất cả bài trong dự án. */
+    public static function articleScope(?array $user = null): array
+    {
+        $user ??= Auth::user();
+        return match ($user['role'] ?? '') {
+            'content' => ['a.writer_id = ?', [(int)$user['id']]],
+            'design' => ['a.designer_id = ?', [(int)$user['id']]],
+            default => ['1=1', []],
+        };
     }
 
     public static function wordpress(array $project): WordPressService

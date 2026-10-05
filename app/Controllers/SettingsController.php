@@ -101,7 +101,7 @@ class SettingsController
 
     public function usage(): void
     {
-        Auth::requireAdmin();
+        Auth::requireRole('leader');
         $month = preg_match('~^\d{4}-\d{2}$~', (string)input('month', '')) ? (string)input('month') : date('Y-m');
         $from = $month . '-01 00:00:00';
         $to = date('Y-m-d H:i:s', strtotime($from . ' +1 month'));

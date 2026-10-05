@@ -15,7 +15,7 @@ class UserController
             "SELECT u.*,
                (SELECT COUNT(*) FROM projects p WHERE p.owner_id = u.id) AS project_count,
                (SELECT COALESCE(SUM(cost_usd),0) FROM usage_logs l WHERE l.user_id = u.id AND l.created_at >= ?) AS month_cost
-             FROM users u ORDER BY u.role, u.name",
+             FROM users u ORDER BY FIELD(u.role, 'admin','leader','seo','content','design'), u.name",
             [date('Y-m-01')]
         );
         view('users/index', ['pageTitle' => 'Tài khoản', 'users' => $users]);
@@ -39,10 +39,10 @@ class UserController
             'name' => mb_substr((string)input('name', '') ?: $email, 0, 150),
             'email' => $email,
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-            'role' => input('role') === 'admin' ? 'admin' : 'seoer',
+            'role' => isset(user_roles()[input('role')]) ? input('role') : 'seo',
             'monthly_budget_usd' => input('monthly_budget_usd') !== '' && input('monthly_budget_usd') !== null ? (float)input('monthly_budget_usd') : null,
         ]);
-        flash('success', 'Đã tạo tài khoản ' . $email . '. Gửi email + mật khẩu cho SEOer để đăng nhập.');
+        flash('success', 'Đã tạo tài khoản ' . $email . '. Gửi email + mật khẩu cho nhân viên để đăng nhập.');
         redirect('/users');
     }
 
@@ -52,7 +52,7 @@ class UserController
         $user = db()->fetch('SELECT * FROM users WHERE id = ?', [$id]) ?? abort(404);
         $data = [
             'name' => mb_substr((string)input('name', $user['name']), 0, 150),
-            'role' => input('role') === 'admin' ? 'admin' : 'seoer',
+            'role' => isset(user_roles()[input('role')]) ? input('role') : 'seo',
             'is_active' => input('is_active') ? 1 : 0,
             'monthly_budget_usd' => input('monthly_budget_usd') !== '' && input('monthly_budget_usd') !== null ? (float)input('monthly_budget_usd') : null,
         ];

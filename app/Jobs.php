@@ -22,7 +22,7 @@ class Jobs
         match ($job['type']) {
             'outline' => self::outline((int)$payload['article_id'], $ctx),
             'write' => self::write((int)$payload['article_id'], $ctx),
-            'images' => self::images((int)$payload['article_id'], $ctx, false),
+            'images' => self::images((int)$payload['article_id'], $ctx, true),
             'image' => self::regenerateImage((int)$payload['article_id'], (int)$payload['image_id'], $ctx, $payload['prompt'] ?? null),
             'publish' => self::publish((int)$payload['article_id']),
             'import_sitemap' => self::importSitemap((int)$job['project_id']),
@@ -31,6 +31,7 @@ class Jobs
             'sheet_push' => self::sheetPush((int)$payload['article_id']),
             'sheet_push_all' => SheetSync::pushAll(self::project((int)$job['project_id'])),
             'sheet_pull' => SheetSync::pull(self::project((int)$job['project_id'])),
+            'cluster_keywords' => self::clusterKeywords((int)$job['project_id'], $ctx, !empty($payload['only_missing'])),
             default => throw new \RuntimeException('Loại công việc không hỗ trợ: ' . $job['type']),
         };
     }
@@ -73,61 +74,58 @@ class Jobs
             $data['title'] = mb_substr(strip_tags($title), 0, 500);
         }
         db()->update('articles', $data, 'id = ?', [$articleId]);
+        Article::log($articleId, 'ai_outline', null, $ctx['user_id']);
+        if ($article['status'] === 'plan') {
+            Article::setStatus($articleId, 'outline');
+        }
     }
 
+    /** AI viết bản nháp theo outline đã duyệt. Bài giữ trạng thái "Đang viết" để Content chỉnh sửa rồi gửi duyệt. */
     private static function write(int $articleId, array $ctx): void
     {
         [$article, $project] = self::load($articleId);
-        Article::setStatus($articleId, 'writing');
-
         $links = InternalLinker::candidates((int)$project['id'], $article['keyword'], (string)$article['secondary_keywords'], 15, $article['wp_url']);
         $imageCount = max(0, min(6, (int)$project['images_per_article']));
 
-        try {
-            $res = ClaudeService::fromSettings()->complete(ContentWriter::systemPrompt($project), ContentWriter::writePrompt($project, $article, $links, $imageCount), 16000);
-            Usage::log($ctx, 'anthropic', $res['model'], 'write', $res['input_tokens'], $res['output_tokens'], 0, Usage::claudeCost($res['model'], $res['input_tokens'], $res['output_tokens']));
-            $parsed = ContentWriter::parseArticle($res['text']);
-        } catch (\Throwable $e) {
-            // Trả bài về trạng thái trước khi viết
-            Article::setStatus($articleId, $article['status'] === 'writing' ? 'idea' : $article['status']);
-            throw $e;
+        $res = ClaudeService::fromSettings()->complete(ContentWriter::systemPrompt($project), ContentWriter::writePrompt($project, $article, $links, $imageCount), 16000);
+        Usage::log($ctx, 'anthropic', $res['model'], 'write', $res['input_tokens'], $res['output_tokens'], 0, Usage::claudeCost($res['model'], $res['input_tokens'], $res['output_tokens']));
+        $parsed = ContentWriter::parseArticle($res['text']);
+
+        // Gợi ý hình cho Designer: giữ nguyên hình đã có file, chỉ thay các gợi ý chưa làm
+        $existing = [];
+        foreach (Article::images($articleId) as $img) {
+            if ($img['file_path']) {
+                $existing[(int)$img['position']] = $img;
+            } else {
+                db()->query('DELETE FROM article_images WHERE id = ?', [$img['id']]);
+            }
         }
+        foreach ($parsed['images'] as $pos => $img) {
+            if ($pos > $imageCount) {
+                continue;
+            }
+            if (isset($existing[$pos])) {
+                db()->update('article_images', ['prompt' => $img['prompt']], 'id = ?', [$existing[$pos]['id']]);
+            } else {
+                db()->insert('article_images', ['article_id' => $articleId, 'position' => $pos, 'prompt' => $img['prompt'], 'alt_text' => $img['alt']]);
+            }
+        }
+        // Đặt lại các hình đã có vào vị trí giữ chỗ trong bài mới
+        $content = $parsed['content'];
+        foreach ($existing as $img) {
+            $content = self::placeImage($content, $img, (string)$img['file_path']);
+        }
+
         db()->update('articles', [
             'title' => $parsed['title'] ?: $article['title'],
             'slug' => $parsed['slug'],
             'meta_title' => $parsed['meta_title'],
             'meta_description' => $parsed['meta_description'],
             'excerpt' => $parsed['excerpt'],
-            'content' => $parsed['content'],
+            'content' => $content,
+            'secondary_keywords' => $article['secondary_keywords'] ?: ($parsed['tags'] ? implode(', ', $parsed['tags']) : null),
         ], 'id = ?', [$articleId]);
-        if ($parsed['tags']) {
-            db()->update('articles', ['secondary_keywords' => $article['secondary_keywords'] ?: implode(', ', $parsed['tags'])], 'id = ?', [$articleId]);
-        }
-
-        // Lưu prompt ảnh (ảnh cũ chưa lên WP thì xóa đi để tạo lại)
-        foreach (Article::images($articleId) as $old) {
-            if ($old['file_path'] && is_file(BASE_PATH . '/' . $old['file_path'])) {
-                @unlink(BASE_PATH . '/' . $old['file_path']);
-            }
-        }
-        db()->query('DELETE FROM article_images WHERE article_id = ?', [$articleId]);
-        foreach ($parsed['images'] as $pos => $img) {
-            if ($pos > $imageCount) {
-                continue;
-            }
-            db()->insert('article_images', ['article_id' => $articleId, 'position' => $pos, 'prompt' => $img['prompt'], 'alt_text' => $img['alt']]);
-        }
-
-        Article::setStatus($articleId, 'review');
-
-        // Tự động tạo ảnh ngay sau khi viết xong nếu đã có OpenAI key.
-        if (Settings::has('openai_api_key') && $parsed['images']) {
-            try {
-                self::images($articleId, $ctx, true);
-            } catch (\Throwable $e) {
-                throw new \RuntimeException('Đã viết xong bài, nhưng tạo ảnh bị lỗi (bấm "Tạo ảnh" để thử lại): ' . $e->getMessage());
-            }
-        }
+        Article::log($articleId, 'ai_write', 'AI viết bản nháp, cần Content kiểm tra và chỉnh sửa trước khi gửi duyệt.', $ctx['user_id']);
     }
 
     private static function images(int $articleId, array $ctx, bool $onlyMissing): void
@@ -135,7 +133,7 @@ class Jobs
         [$article, $project] = self::load($articleId);
         $images = Article::images($articleId);
         if (!$images) {
-            throw new \RuntimeException('Bài chưa có prompt ảnh. Hãy viết bài bằng AI trước, hoặc thêm ảnh thủ công.');
+            throw new \RuntimeException('Bài chưa có gợi ý hình. Hãy để AI viết bài trước, hoặc Designer upload hình.');
         }
         $service = ImageService::fromSettings();
         $content = (string)$article['content'];
@@ -158,13 +156,14 @@ class Jobs
             db()->update('article_images', ['file_path' => $path, 'wp_media_id' => null, 'wp_url' => null], 'id = ?', [$img['id']]);
         }
         db()->update('articles', ['content' => $content], 'id = ?', [$articleId]);
+        Article::log($articleId, 'ai_images', $errors ? 'Một số hình lỗi' : null, $ctx['user_id']);
         if ($errors) {
             throw new \RuntimeException(implode(' | ', $errors));
         }
     }
 
     /** Thay placeholder [IMAGE_n] hoặc ảnh cũ trong bài bằng ảnh mới. */
-    private static function placeImage(string $content, array $img, string $newPath): string
+    public static function placeImage(string $content, array $img, string $newPath): string
     {
         if ((int)$img['position'] === 0) {
             return $content; // ảnh đại diện không chèn vào thân bài
@@ -280,6 +279,7 @@ class Jobs
             'wp_url' => (string)($post['link'] ?? ''),
             'published_at' => $status === 'publish' ? now() : $article['published_at'],
         ], 'id = ?', [$articleId]);
+        Article::log($articleId, 'publish', ($article['wp_post_id'] ? 'Cập nhật bài #' : 'Tạo bài #') . $post['id'] . ' (' . $status . ')', null);
         Article::setStatus($articleId, $status === 'publish' ? 'published' : 'wp_draft');
         // Cập nhật lại link bài trên sheet (kể cả khi trạng thái không đổi)
         Article::syncToSheet($articleId);
@@ -337,6 +337,58 @@ class Jobs
         }
         if (count($rows) === 25) {
             Queue::push('fetch_titles', [], ['project_id' => $projectId]);
+        }
+    }
+
+    /** AI gom bộ từ khóa thành các nhóm chủ đề (topic cluster). */
+    private static function clusterKeywords(int $projectId, array $ctx, bool $onlyMissing): void
+    {
+        $project = self::project($projectId);
+        $where = $onlyMissing ? " AND (cluster IS NULL OR cluster = '')" : '';
+        $rows = db()->fetchAll("SELECT id, keyword, volume FROM keywords WHERE project_id = ?$where ORDER BY volume DESC LIMIT 600", [$projectId]);
+        if (!$rows) {
+            return;
+        }
+        $existing = array_column(db()->fetchAll(
+            "SELECT DISTINCT cluster FROM keywords WHERE project_id = ? AND cluster IS NOT NULL AND cluster <> ''",
+            [$projectId]
+        ), 'cluster');
+        $list = implode("\n", array_map(fn($r) => $r['keyword'] . ($r['volume'] ? ' (' . $r['volume'] . ')' : ''), $rows));
+        $existingText = $existing ? "Các nhóm đã có (ưu tiên dùng lại nếu phù hợp): " . implode(', ', $existing) : '';
+        $prompt = <<<TXT
+Gom danh sách từ khóa dưới đây thành các nhóm chủ đề (topic cluster) để lên kế hoạch content SEO.
+Nguyên tắc: các từ khóa cùng search intent, có thể trả lời trong cùng một bài viết thì cùng nhóm.
+Tên nhóm ngắn gọn bằng tiếng Việt (2-6 từ), là chủ đề chính của nhóm.
+{$existingText}
+
+Danh sách (số trong ngoặc là lượng tìm kiếm):
+{$list}
+
+Trả lời đúng định dạng, mỗi dòng một từ khóa, giữ nguyên từ khóa gốc, không thêm gì khác:
+<clusters>
+từ khóa | tên nhóm
+</clusters>
+TXT;
+        $res = ClaudeService::fromSettings()->complete(ContentWriter::systemPrompt($project), $prompt, 16000);
+        Usage::log($ctx, 'anthropic', $res['model'], 'cluster', $res['input_tokens'], $res['output_tokens'], 0, Usage::claudeCost($res['model'], $res['input_tokens'], $res['output_tokens']));
+        $map = [];
+        foreach ($rows as $r) {
+            $map[mb_strtolower(trim($r['keyword']))] = (int)$r['id'];
+        }
+        $updated = 0;
+        foreach (preg_split('~\R~', (string)(ContentWriter::tag($res['text'], 'clusters') ?? $res['text'])) as $line) {
+            $parts = array_map('trim', explode('|', $line));
+            if (count($parts) < 2) {
+                continue;
+            }
+            $kw = mb_strtolower(preg_replace('~\s*\(\d+\)$~', '', $parts[0]) ?? $parts[0]);
+            if (isset($map[$kw]) && $parts[1] !== '') {
+                db()->update('keywords', ['cluster' => mb_substr($parts[1], 0, 190)], 'id = ?', [$map[$kw]]);
+                $updated++;
+            }
+        }
+        if ($updated === 0) {
+            throw new \RuntimeException('AI không trả về kết quả gom nhóm hợp lệ, vui lòng thử lại.');
         }
     }
 

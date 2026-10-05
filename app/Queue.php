@@ -10,6 +10,15 @@ class Queue
 {
     public const AI_TASKS = ['outline', 'write', 'images', 'image'];
 
+    /** task => [các bước được phép, vai trò được phép (admin luôn được), mô tả] */
+    public const TASK_RULES = [
+        'outline' => [['plan', 'outline'], ['seo', 'leader'], 'tạo outline'],
+        'write'   => [['writing', 'revise'], ['content', 'seo'], 'viết bài bằng AI'],
+        'images'  => [['design', 'image_revise'], ['design', 'seo'], 'tạo hình bằng AI'],
+        'image'   => [['design', 'image_revise'], ['design', 'seo'], 'tạo lại hình'],
+        'publish' => [['ready', 'wp_draft', 'published'], ['seo', 'leader'], 'đăng WordPress'],
+    ];
+
     public static function push(string $type, array $payload = [], array $ctx = [], int $delaySeconds = 0): int
     {
         return db()->insert('jobs', [
@@ -31,6 +40,16 @@ class Queue
         $article = Article::find($articleId);
         if (!$article) {
             throw new \RuntimeException('Bài viết không tồn tại.');
+        }
+        // Mỗi tác vụ chỉ làm được ở đúng bước của quy trình, đúng vai trò
+        [$statuses, $roles, $label] = self::TASK_RULES[$task] ?? [[], [], $task];
+        $user = $userId ? db()->fetch('SELECT role FROM users WHERE id = ?', [$userId]) : null;
+        $isAdmin = ($user['role'] ?? '') === 'admin';
+        if (!$isAdmin && !in_array($article['status'], $statuses, true)) {
+            throw new \RuntimeException('Không thể ' . $label . ' khi bài đang ở bước "' . status_label($article['status']) . '".');
+        }
+        if ($user && !$isAdmin && !in_array($user['role'], $roles, true)) {
+            throw new \RuntimeException('Vai trò ' . role_label($user['role']) . ' không ' . $label . ' được.');
         }
         if (in_array($article['ai_state'], ['queued', 'running'], true)) {
             throw new \RuntimeException('Bài "' . $article['keyword'] . '" đang có tác vụ chạy, vui lòng đợi.');

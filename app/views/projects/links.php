@@ -70,30 +70,47 @@ $jobStatus = ['pending' => 'đang chờ', 'running' => 'đang chạy', 'done' =>
                     </form>
                 <?php endif; ?>
             </div>
+            <div class="px-3 py-2 border-bottom d-flex flex-wrap gap-2 small">
+                <span class="text-muted">Rà soát:</span>
+                <a href="?" class="<?= input('audit') ? 'text-muted' : 'fw-bold' ?>">Tất cả</a>
+                <a href="?audit=__none" class="<?= input('audit') === '__none' ? 'fw-bold' : 'text-muted' ?>">Chưa rà soát (<?= (int)($auditCounts['__none'] ?? 0) ?>)</a>
+                <?php foreach (\App\Controllers\LinkController::AUDIT_ACTIONS as $k => [$label]): ?>
+                    <a href="?audit=<?= $k ?>" class="<?= input('audit') === $k ? 'fw-bold' : 'text-muted' ?>"><?= e($label) ?> (<?= (int)($auditCounts[$k] ?? 0) ?>)</a>
+                <?php endforeach; ?>
+            </div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0 links-table">
-                    <thead class="table-light"><tr><th>URL / Tiêu đề</th><th style="width:30%">Từ khóa ưu tiên</th><th></th></tr></thead>
+                    <thead class="table-light"><tr><th>URL / Tiêu đề</th><th style="width:16%">Từ khóa ưu tiên</th><th style="width:13%">Loại trang</th><th style="width:14%">Nhóm chủ đề</th><th style="width:15%">Đề xuất</th><th></th></tr></thead>
                     <tbody>
                     <?php foreach ($links as $l): ?>
                         <tr data-link="<?= url('/links/' . $l['id']) ?>">
                             <td>
                                 <input class="form-control form-control-sm border-0 px-0 fw-medium" data-field="title" value="<?= e($l['title']) ?>">
                                 <a href="<?= e($l['url']) ?>" target="_blank" rel="noopener" class="small text-muted text-break"><?= e($l['url']) ?></a>
+                                <input class="form-control form-control-sm mt-1 <?= $l['audit_note'] ? '' : 'd-none' ?>" data-field="audit_note" value="<?= e($l['audit_note']) ?>" placeholder="Ghi chú đề xuất tối ưu">
                             </td>
                             <td><input class="form-control form-control-sm" data-field="keywords" value="<?= e($l['keywords']) ?>" placeholder="—"></td>
+                            <td><select class="form-select form-select-sm" data-field="page_type"><option value="">—</option><?php foreach (\App\Controllers\LinkController::PAGE_TYPES as $k => $label): ?><option value="<?= $k ?>" <?= $l['page_type'] === $k ? 'selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?></select></td>
+                            <td><input class="form-control form-control-sm" data-field="cluster" value="<?= e($l['cluster']) ?>" placeholder="—"></td>
+                            <td><select class="form-select form-select-sm" data-field="audit_action"><option value="">Chưa rà soát</option><?php foreach (\App\Controllers\LinkController::AUDIT_ACTIONS as $k => [$label]): ?><option value="<?= $k ?>" <?= $l['audit_action'] === $k ? 'selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?></select></td>
                             <td class="text-end text-nowrap">
-                                <button type="button" class="btn btn-sm btn-light" data-link-delete title="Xóa"><i class="bi bi-x-lg"></i></button>
+                                <?php if ($l['article_id']): ?>
+                                    <a href="<?= url('/articles/' . $l['article_id']) ?>" class="btn btn-sm btn-light" title="Mở bài trong tool"><i class="bi bi-file-text"></i></a>
+                                <?php else: ?>
+                                    <form method="post" action="<?= url('/links/' . $l['id'] . '/optimize') ?>" class="d-inline"><?= csrf_field() ?><button class="btn btn-sm btn-light" title="Tạo việc tối ưu lại trang này"><i class="bi bi-tools"></i></button></form>
+                                <?php endif; ?>
+                                <button type="button" class="btn btn-sm btn-light" data-link-delete title="Xóa khỏi danh sách"><i class="bi bi-x-lg"></i></button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                     <?php if (!$links): ?>
-                        <tr><td colspan="3" class="text-center text-muted py-5">Chưa có link nào. Nhập sitemap ở bên trái để bắt đầu.</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted py-5">Chưa có link nào. Nhập sitemap ở bên trái để bắt đầu.</td></tr>
                     <?php endif; ?>
                     </tbody>
                 </table>
             </div>
             <?php require BASE_PATH . '/app/views/partials/pagination.php'; ?>
         </div>
-        <p class="small text-muted mt-2">Sửa tiêu đề / từ khóa trực tiếp trong bảng (tự lưu khi rời ô). Khi viết bài, hệ thống chọn ~15 link liên quan nhất theo từ khóa rồi để AI chèn 3-5 link tự nhiên.</p>
+        <p class="small text-muted mt-2">Đây vừa là danh sách <b>rà soát nội dung cũ</b> (check lại mô tả sản phẩm, bài blog → nhóm chủ đề → đề xuất giữ / tối ưu / gộp / xóa), vừa là <b>kho interlink</b> cho AI khi viết bài. Mọi ô sửa trực tiếp, tự lưu. Nút <i class="bi bi-tools"></i> tạo việc tối ưu lại trang đó theo quy trình.</p>
     </div>
 </div>

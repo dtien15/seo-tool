@@ -57,7 +57,7 @@
                 bulkForm.querySelectorAll('input[name="ids[]"]').forEach((c) => (c.checked = e.target.checked));
             }
             if (e.target.name === 'action') {
-                bulkForm.querySelector('.bulk-assignee').classList.toggle('d-none', e.target.value !== 'assign');
+                bulkForm.querySelectorAll('.bulk-extra').forEach((el) => el.classList.toggle('d-none', el.dataset.for !== e.target.value));
             }
             update();
         });
@@ -70,6 +70,50 @@
             else if (action === 'publish' && !confirm('Đăng ' + n + ' bài lên WordPress?')) e.preventDefault();
         });
     }
+
+    // Chọn tất cả checkbox trong cùng bảng
+    document.addEventListener('change', (e) => {
+        const all = e.target.closest('[data-check-all-in]');
+        if (!all) return;
+        all.closest(all.dataset.checkAllIn).querySelectorAll('input[name="ids[]"]').forEach((c) => {
+            if (c.closest('tr')?.style.display !== 'none') c.checked = all.checked;
+        });
+    });
+
+    // Lọc nhanh dòng trong bảng
+    document.querySelectorAll('[data-filter-table]').forEach((input) => {
+        input.addEventListener('input', () => {
+            const q = input.value.toLowerCase();
+            document.querySelectorAll(input.dataset.filterTable + ' tbody tr').forEach((tr) => {
+                tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+        });
+    });
+
+    // Bộ từ khóa: hiện ô giá trị theo thao tác
+    document.querySelectorAll('[data-kw-action]').forEach((sel) => {
+        const value = sel.form.querySelector('[data-kw-value]');
+        const placeholders = { set_cluster: 'Tên nhóm chủ đề', set_priority: '1, 2 hoặc 3', set_intent: 'informational / commercial / transactional...', plan: 'Ngày dự kiến (YYYY-MM-DD, không bắt buộc)' };
+        sel.addEventListener('change', () => {
+            value.classList.toggle('d-none', !placeholders[sel.value]);
+            value.placeholder = placeholders[sel.value] || '';
+            value.type = sel.value === 'plan' ? 'date' : 'text';
+        });
+        sel.form.addEventListener('submit', (e) => {
+            const n = sel.form.querySelectorAll('input[name="ids[]"]:checked').length;
+            if (!n) { e.preventDefault(); alert('Chưa chọn từ khóa nào.'); return; }
+            if (sel.value === 'delete' && !confirm('Xóa ' + n + ' từ khóa?')) e.preventDefault();
+            if (sel.value === 'plan' && !confirm('Tạo ' + n + ' bài trong kế hoạch content?')) e.preventDefault();
+        });
+    });
+
+    // Form thêm bài: hiện ô link khi chọn "tối ưu lại"
+    document.querySelectorAll('input[name="type"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+            const form = radio.closest('form');
+            form.querySelectorAll('[data-show-when]').forEach((el) => el.classList.toggle('d-none', el.dataset.showWhen !== form.type.value));
+        });
+    });
 
     // Kiểm tra kết nối WordPress
     document.querySelectorAll('[data-wp-test]').forEach((btn) => {
@@ -137,12 +181,12 @@
         const url = row.dataset.link;
         row.querySelectorAll('[data-field]').forEach((input) => {
             input.addEventListener('change', async () => {
-                const res = await post(url + '/update', {
-                    title: row.querySelector('[data-field="title"]').value,
-                    keywords: row.querySelector('[data-field="keywords"]').value,
-                });
+                const res = await post(url + '/update', { [input.dataset.field]: input.value });
                 input.classList.add(res.ok ? 'is-valid' : 'is-invalid');
                 setTimeout(() => input.classList.remove('is-valid', 'is-invalid'), 1200);
+                if (input.dataset.field === 'audit_action' && input.value) {
+                    row.querySelector('[data-field="audit_note"]')?.classList.remove('d-none');
+                }
             });
         });
         row.querySelector('[data-link-delete]')?.addEventListener('click', async () => {
@@ -171,8 +215,10 @@
 
         initEditor(selector) {
             if (!window.tinymce) return;
+            const readonly = document.querySelector(selector)?.dataset.readonly === '1';
             tinymce.init({
                 selector,
+                readonly,
                 license_key: 'gpl',
                 height: 720,
                 menubar: false,
@@ -186,6 +232,32 @@
                 convert_urls: false,
                 entity_encoding: 'raw',
                 content_style: 'body{font-family:Georgia,serif;font-size:17px;line-height:1.7;max-width:780px;margin:1rem auto}img{max-width:100%;height:auto}a{color:#0b57d0}',
+            });
+        },
+
+        /** Trước khi gửi duyệt: nếu bài có thay đổi chưa lưu thì lưu trước. */
+        guardWorkflow() {
+            const main = document.getElementById('main-form');
+            if (!main) return;
+            let dirty = false;
+            main.addEventListener('input', () => (dirty = true));
+            main.addEventListener('change', () => (dirty = true));
+            main.addEventListener('submit', () => (dirty = false));
+            const isDirty = () => dirty || (window.tinymce && tinymce.activeEditor && tinymce.activeEditor.isDirty());
+            document.querySelectorAll('.workflow-form').forEach((form) => {
+                form.addEventListener('submit', async (e) => {
+                    if (!isDirty()) return;
+                    e.preventDefault();
+                    if (window.tinymce) tinymce.triggerSave();
+                    const res = await fetch(main.action, { method: 'POST', body: new FormData(main), credentials: 'same-origin' });
+                    if (!res.ok) { alert('Không lưu được bài, vui lòng bấm Lưu trước.'); return; }
+                    dirty = false;
+                    if (window.tinymce && tinymce.activeEditor) tinymce.activeEditor.setDirty(false);
+                    form.submit();
+                });
+            });
+            window.addEventListener('beforeunload', (e) => {
+                if (isDirty()) { e.preventDefault(); e.returnValue = ''; }
             });
         },
 

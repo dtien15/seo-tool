@@ -74,7 +74,7 @@ class Worker
             $message = mb_substr($e->getMessage(), 0, 2000);
             log_error("Job #{$job['id']} {$job['type']}: " . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
             // Tác vụ AI tốn tiền -> không tự thử lại; tác vụ khác thử lại tối đa 3 lần.
-            $retry = !$isArticleTask && (int)$job['attempts'] < 3;
+            $retry = !$isArticleTask && $job['type'] !== 'cluster_keywords' && (int)$job['attempts'] < 3;
             db()->update('jobs', [
                 'status' => $retry ? 'pending' : 'failed',
                 'last_error' => $message,

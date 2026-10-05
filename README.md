@@ -2,7 +2,8 @@
 
 Web nội bộ (PHP 8.1+ và MySQL) để team SEO quản lý nhiều dự án:
 
-- **Tài khoản và phân quyền**: admin cấp tài khoản cho từng SEOer. Mỗi người quản lý nhiều dự án. Admin chia sẻ được dự án cho người khác và đặt hạn mức chi phí AI theo tháng.
+- **Tài khoản 5 vai trò** (Admin, Trưởng phòng, SEO, Content, Design), duyệt 2 cấp SEO + TP, hạn mức chi phí AI theo tháng.
+- **Theo quy trình SEO**: nghiên cứu → đối thủ → kiểm tra website → bộ từ khóa → KPI → plan content → triển khai → tối ưu lại định kỳ.
 - **Dự án**: thông tin thương hiệu, giọng văn, đối tượng, quy tắc nội dung. AI đọc phần này khi viết bài.
 - **Interlink**: quét `sitemap.xml` (có hỗ trợ sitemap index của Yoast/Rank Math) hoặc lấy bài/trang trực tiếp từ WordPress. Khi viết, tool chọn các link liên quan nhất để AI chèn tự nhiên vào bài.
 - **Viết bài bằng AI (Claude)**: tạo outline → viết bài HTML chuẩn SEO (title, slug, meta, excerpt) → AI đề xuất prompt ảnh và alt text.
@@ -53,18 +54,35 @@ cPanel → **Cron Jobs** → thêm lệnh chạy **mỗi phút** (`* * * * *`):
 ## 4. Cấu hình lần đầu (tài khoản admin)
 
 1. **Cài đặt hệ thống**: nhập Claude API key, OpenAI API key, tải file JSON Service Account, rồi bấm *Kiểm tra*.
-2. **Tài khoản**: cấp tài khoản cho từng SEOer, đặt hạn mức $/tháng nếu cần.
-3. SEOer đăng nhập → **Tạo dự án** → điền thông tin, kết nối WordPress bằng **Application Password** (WP Admin → Người dùng → Hồ sơ → Application Passwords).
+2. **Tài khoản**: cấp tài khoản theo vai trò, đặt hạn mức $/tháng nếu cần.
+3. SEO đăng nhập → **Tạo dự án** → điền thông tin, kết nối WordPress bằng **Application Password** (WP Admin → Người dùng → Hồ sơ → Application Passwords).
 4. Tab **Interlink**: quét sitemap.
 5. Tab **Google Sheet**: chia sẻ sheet cho email service account → dán link → *Khởi tạo & đồng bộ* → dán Apps Script theo hướng dẫn trên trang.
 6. **Thêm bài viết** → *Viết bài bằng AI* → duyệt và sửa → *Đăng lên WP*.
 
-## 5. Quy trình trạng thái bài
+## 5. Quy trình SEO trong tool
 
-`Ý tưởng → Đang viết → Chờ duyệt → (Cần sửa) → Đã duyệt → Nháp trên WP / Đã đăng`
+**Vai trò tài khoản:** Admin · Trưởng phòng (TP) · SEO · Content · Design.
+Content / Design chỉ thấy bài được giao cho mình.
 
-- Nếu bật *"Tự động đẩy lên WordPress khi Đã duyệt"* trong cài đặt dự án, chỉ cần đổi trạng thái sang **Đã duyệt** (trên web hoặc trên Google Sheet) là bài tự đăng.
-- Meta title/description được gửi theo field của Rank Math/Yoast. Field này chỉ có tác dụng khi site cho phép ghi meta qua REST API. Nếu không, meta description vẫn được dùng làm excerpt.
+**Mỗi dự án đi theo các tab:**
+
+1. **Nghiên cứu**: website, sản phẩm/dịch vụ, khách hàng, hành vi người dùng.
+2. **Đối thủ**: import từ khóa top (CSV từ Ahrefs/Semrush), số liệu traffic/backlink theo tháng, ghi chú backlink & content.
+3. **Website**: chưa có web thì lên kế hoạch build; đã có web thì dùng checklist Technical / Content / Giao diện, kết luận (ổn / không ổn / web rác) và phương án đề xuất.
+4. **Từ khóa**: bộ từ khóa, AI gom nhóm chủ đề, tạo bài vào kế hoạch.
+5. **KPI**: mục tiêu / thực tế theo tháng.
+6. **Plan content**: danh sách bài và phân công SEO / Content / Design.
+7. **Nội dung web**: rà soát trang cũ (giữ / tối ưu / gộp / xóa) và tạo việc tối ưu lại.
+
+**Luồng một bài viết:**
+
+`Kế hoạch → Outline (SEO) → TP duyệt outline → Viết bài (AI viết nháp, Content sửa) → SEO + TP duyệt bài → Làm hình (Design upload / AI) → SEO + TP duyệt hình → Sẵn sàng đăng → SEO đăng WordPress`
+
+- Bước duyệt bài và duyệt hình cần **cả SEO và TP** duyệt. Một bên "Yêu cầu sửa" (bắt buộc ghi chú) thì bài quay lại người làm.
+- Bài đã đăng quá số ngày cài đặt (mặc định 30 ngày) sẽ hiện ở mục **"Bài cũ đến hạn tối ưu lại"**. SEO chọn "Đã kiểm tra" hoặc "Tối ưu lại" (bài quay lại bước viết; khi đăng sẽ cập nhật đè bài cũ).
+- Mọi thao tác được ghi vào **Lịch sử xử lý** của bài.
+- Nếu bật "Tự động đẩy lên WordPress" trong cài đặt dự án, bài tự đăng khi duyệt hình xong.
 
 ## 6. Xử lý sự cố thường gặp
 
