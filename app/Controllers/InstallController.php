@@ -101,6 +101,43 @@ class InstallController
         redirect('/login');
     }
 
+    /** Khi config.php được tạo bằng tay: tạo tài khoản admin đầu tiên (chỉ khi chưa có tài khoản nào). */
+    public function setupAdmin(): void
+    {
+        if (db()->value('SELECT 1 FROM users LIMIT 1')) {
+            redirect('/login');
+        }
+        $errors = [];
+        $data = ['admin_name' => '', 'admin_email' => ''];
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data['admin_name'] = trim((string)($_POST['admin_name'] ?? ''));
+            $data['admin_email'] = mb_strtolower(trim((string)($_POST['admin_email'] ?? '')));
+            $pass = (string)($_POST['admin_pass'] ?? '');
+            if (!filter_var($data['admin_email'], FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'Email không hợp lệ.';
+            }
+            if (mb_strlen($pass) < 8) {
+                $errors[] = 'Mật khẩu tối thiểu 8 ký tự.';
+            }
+            try {
+                \App\Crypto::encrypt('test');
+            } catch (\RuntimeException $e) {
+                $errors[] = $e->getMessage();
+            }
+            if (!$errors) {
+                db()->insert('users', [
+                    'name' => $data['admin_name'] ?: 'Admin',
+                    'email' => $data['admin_email'],
+                    'password_hash' => password_hash($pass, PASSWORD_DEFAULT),
+                    'role' => 'admin',
+                ]);
+                flash('success', 'Đã tạo tài khoản admin. Hãy đăng nhập.');
+                redirect('/login');
+            }
+        }
+        view('setup_admin', ['data' => $data, 'errors' => $errors], 'layout_guest');
+    }
+
     private function guessUrl(): string
     {
         $https = (($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';

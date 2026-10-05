@@ -41,8 +41,15 @@ try {
     abort(500, 'Không kết nối được cơ sở dữ liệu. Kiểm tra lại config.php.');
 }
 
+// Tự tạo config.php bằng tay: chưa có tài khoản nào thì tạo admin đầu tiên
+if ($path !== '/setup' && !db()->value('SELECT 1 FROM users LIMIT 1')) {
+    redirect('/setup');
+}
+
 $routes = [
     ['GET',  '/install',                          'InstallController@done'],
+    ['GET',  '/setup',                            'InstallController@setupAdmin'],
+    ['POST', '/setup',                            'InstallController@setupAdmin'],
     ['GET',  '/login',                            'AuthController@loginForm'],
     ['POST', '/login',                            'AuthController@login'],
     ['POST', '/logout',                           'AuthController@logout'],

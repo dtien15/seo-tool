@@ -8,11 +8,15 @@ class Crypto
 {
     private static function key(): string
     {
-        $key = base64_decode((string)config('app_key', ''), true);
-        if ($key === false || strlen($key) !== 32) {
-            throw new \RuntimeException('APP_KEY trong config.php không hợp lệ.');
+        $raw = (string)config('app_key', '');
+        $key = base64_decode($raw, true);
+        if ($key !== false && strlen($key) === 32) {
+            return $key; // khóa do trình cài đặt tạo
         }
-        return $key;
+        if (strlen($raw) >= 16) {
+            return hash('sha256', $raw, true); // chuỗi tự điền trong config.php
+        }
+        throw new \RuntimeException('app_key trong config.php phải là chuỗi ngẫu nhiên dài ít nhất 32 ký tự.');
     }
 
     public static function encrypt(?string $plain): ?string

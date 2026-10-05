@@ -34,7 +34,9 @@ Web nội bộ (PHP 8.1+ và MySQL) để team SEO quản lý nhiều dự án:
    - *Clone URL*: `git@github.com:dtien15/seo-tool.git`
    - *Repository Path*: **thư mục web** (Document Root) của domain/subdomain chạy tool, thư mục phải trống.
 3. Cài thư viện (1 lần): cPanel → *Terminal* → `cd ~/<thư-mục-web> && composer install --no-dev`
-4. Mở website → **trình cài đặt** hiện ra → điền MySQL và tạo tài khoản admin (làm ngay sau khi clone).
+4. Cấu hình database, chọn 1 trong 2 cách:
+   - **Form cài đặt:** mở website → điền MySQL và tạo tài khoản admin (tool tự tạo `config.php`).
+   - **Tự tạo file:** trong File Manager copy `config.sample.php` thành `config.php`, điền thông tin MySQL và `app_key` (chuỗi ngẫu nhiên ≥ 32 ký tự, không đổi về sau). Mở website → tạo tài khoản admin đầu tiên.
 
 ### Cập nhật phiên bản mới
 

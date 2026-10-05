@@ -10,7 +10,7 @@ DirectoryIndex index.php
 
     # Chặn truy cập trực tiếp vào mã nguồn, cấu hình, file ẩn (.git, .env...)
     RewriteRule ^(app|cron|database|storage|vendor)(/|$) - [F,L]
-    RewriteRule ^(config\.php|composer\.(json|lock)|README\.md)$ - [F,L]
+    RewriteRule ^(config(\.sample)?\.php|composer\.(json|lock)|README\.md)$ - [F,L]
     RewriteRule (^|/)\.(?!well-known/) - [F,L]
 
     # Mọi request khác (không phải file có thật) đi qua index.php
