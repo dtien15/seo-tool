@@ -115,31 +115,6 @@
         });
     });
 
-    // Chế độ copy–dán với ChatGPT / Claude
-    document.addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-manual-ai]');
-        if (!btn || e.defaultPrevented) return;
-        const modalEl = document.getElementById('manual-ai-modal');
-        const form = document.getElementById('manual-ai-form');
-        const box = document.getElementById('manual-ai-prompt');
-        form.action = btn.dataset.pasteUrl;
-        form.task.value = btn.dataset.task;
-        form.result.value = '';
-        modalEl.querySelector('[data-title]').textContent = btn.dataset.title || 'Làm với ChatGPT / Claude';
-        box.value = 'Đang tải prompt...';
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-        let url = btn.dataset.manualAi;
-        if (btn.dataset.onlyMissing) {
-            url += (url.includes('?') ? '&' : '?') + 'only_missing=' + (document.querySelector(btn.dataset.onlyMissing)?.checked ? 1 : 0);
-        }
-        try {
-            const res = await getJson(url);
-            box.value = res.ok ? res.prompt : '⚠ ' + (res.error || 'Không lấy được prompt');
-        } catch (err) {
-            box.value = '⚠ Không lấy được prompt';
-        }
-    });
-
     // Kiểm tra kết nối WordPress
     document.querySelectorAll('[data-wp-test]').forEach((btn) => {
         btn.addEventListener('click', async () => {

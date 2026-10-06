@@ -8,14 +8,13 @@ use App\Usage;
 
 /**
  * Chọn nhà cung cấp AI viết bài theo Cài đặt hệ thống:
- *   anthropic – Claude API, openai – OpenAI API, manual – copy prompt sang ChatGPT / Claude rồi dán kết quả về.
+ *   anthropic – Claude API, openai – OpenAI API.
  */
 class AiText
 {
     public const PROVIDERS = [
         'anthropic' => 'Claude API (Anthropic)',
         'openai' => 'OpenAI API',
-        'manual' => 'Thủ công: copy prompt sang ChatGPT / Claude rồi dán kết quả',
     ];
 
     public static function provider(): string
@@ -24,18 +23,12 @@ class AiText
         return isset(self::PROVIDERS[$p]) ? $p : 'anthropic';
     }
 
-    public static function isManual(): bool
-    {
-        return self::provider() === 'manual';
-    }
-
     /** Đã đủ cấu hình để chạy AI tự động chưa. */
     public static function ready(): bool
     {
         return match (self::provider()) {
             'anthropic' => Settings::has('anthropic_api_key'),
             'openai' => Settings::has('openai_api_key') && trim((string)Settings::get('openai_text_model', '')) !== '',
-            default => false,
         };
     }
 
@@ -48,7 +41,6 @@ class AiText
         $provider = self::provider();
         $res = match ($provider) {
             'openai' => OpenAiText::fromSettings()->complete($system, $prompt, $maxTokens),
-            'manual' => throw new \RuntimeException('Đang ở chế độ thủ công: dùng nút "Copy prompt" để làm với ChatGPT / Claude.'),
             default => ClaudeService::fromSettings()->complete($system, $prompt, $maxTokens),
         };
         $cost = $provider === 'openai'
@@ -56,12 +48,5 @@ class AiText
             : Usage::claudeCost($res['model'], $res['input_tokens'], $res['output_tokens']);
         Usage::log($ctx, $provider, $res['model'], $task, $res['input_tokens'], $res['output_tokens'], 0, $cost);
         return $res;
-    }
-
-    /** Ghép prompt để dán vào ChatGPT / Claude (chế độ thủ công). */
-    public static function manualPrompt(string $system, string $prompt): string
-    {
-        return $system . "\n\n---\n\n" . $prompt
-            . "\n\nLưu ý: đặt TOÀN BỘ câu trả lời trong một khối code (```) để giữ nguyên các thẻ và HTML.";
     }
 }

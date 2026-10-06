@@ -32,20 +32,18 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <?php foreach (\App\Services\AiText::PROVIDERS as $k => $label): ?>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="border rounded p-3 d-block h-100 <?= $provider === $k ? 'border-primary bg-primary-subtle' : '' ?>" style="cursor:pointer">
                                     <input type="radio" name="ai_provider" value="<?= $k ?>" class="form-check-input me-1" <?= $provider === $k ? 'checked' : '' ?>>
                                     <b><?= e($label) ?></b>
                                     <div class="small text-muted mt-1"><?= [
                                         'anthropic' => 'Tự động, chạy nền. Cần Claude API key (trả theo lượng dùng).',
                                         'openai' => 'Tự động, chạy nền. Dùng chung OpenAI API key với phần tạo hình.',
-                                        'manual' => 'Không cần API, 0 đồng. Tool soạn prompt → bạn dán vào chatgpt.com / claude.ai → dán kết quả về.',
                                     ][$k] ?></div>
                                 </label>
                             </div>
                         <?php endforeach; ?>
                     </div>
-                    <p class="small text-muted mt-3 mb-0">Nút <b>"Copy prompt"</b> (làm thủ công với ChatGPT / Claude) luôn có sẵn ở trang bài viết, kể cả khi đang dùng API – tiện khi muốn so sánh hoặc lúc API hết tiền.</p>
                     <div class="d-flex align-items-center gap-2 mt-3">
                         <button type="button" class="btn btn-sm btn-outline-secondary" data-ajax-test="<?= url('/settings/test-claude') ?>" data-result="#ai-test"><i class="bi bi-plug"></i> Kiểm tra AI đang chọn</button>
                         <small class="text-muted">(Lưu cài đặt trước khi kiểm tra)</small>

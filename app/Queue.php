@@ -42,9 +42,6 @@ class Queue
             throw new \RuntimeException('Bài viết không tồn tại.');
         }
         self::assertAllowed($task, $article, $userId);
-        if (in_array($task, ['outline', 'write'], true) && \App\Services\AiText::isManual()) {
-            throw new \RuntimeException('Đang ở chế độ thủ công: dùng nút "Copy prompt" để làm với ChatGPT / Claude.');
-        }
         if (in_array($article['ai_state'], ['queued', 'running'], true)) {
             throw new \RuntimeException('Bài "' . $article['keyword'] . '" đang có tác vụ chạy, vui lòng đợi.');
         }
@@ -59,7 +56,7 @@ class Queue
         Article::setAiState($articleId, 'queued', $task);
     }
 
-    /** Tác vụ chỉ làm được ở đúng bước của quy trình, đúng vai trò (dùng chung cho chạy tự động và copy–dán). */
+    /** Tác vụ chỉ làm được ở đúng bước của quy trình, đúng vai trò. */
     public static function assertAllowed(string $task, array $article, ?int $userId): void
     {
         [$statuses, $roles, $label] = self::TASK_RULES[$task] ?? [[], [], $task];
