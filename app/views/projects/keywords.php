@@ -31,7 +31,7 @@ $currentCluster = (string)input('cluster', '');
                         <div class="small text-info" data-ai-pending><span class="spinner-border spinner-border-sm"></span> AI đang gom nhóm...</div>
                     <?php else: ?>
                         <label class="small d-block mb-2"><input type="checkbox" name="only_missing" value="1" checked> Chỉ từ khóa chưa có nhóm</label>
-                        <button class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-stars"></i> AI gom nhóm chủ đề</button>
+                        <div class="d-flex gap-1"><?= ai_select() ?><button class="btn btn-sm btn-outline-primary flex-grow-1" <?= \App\Services\AiText::ready() ? '' : 'disabled' ?>><i class="bi bi-stars"></i> AI gom nhóm</button></div>
                     <?php endif; ?>
                 </form>
             <?php endif; ?>
@@ -48,7 +48,8 @@ $currentCluster = (string)input('cluster', '');
                         <?php else: ?>
                             <form method="post" action="<?= url('/projects/' . $project['id'] . '/ai') ?>" class="d-flex gap-2">
                                 <?= csrf_field() ?><input type="hidden" name="task" value="ai_keywords">
-                                <input type="number" name="count" value="40" min="10" max="100" class="form-control form-control-sm" style="width:80px" title="Số từ khóa">
+                                <input type="number" name="count" value="40" min="10" max="100" class="form-control form-control-sm" style="width:70px" title="Số từ khóa">
+                                <?= ai_select() ?>
                                 <button class="btn btn-sm btn-outline-primary flex-grow-1" <?= \App\Services\AiText::ready() ? '' : 'disabled' ?>><i class="bi bi-stars"></i> Gợi ý</button>
                             </form>
                         <?php endif; ?>

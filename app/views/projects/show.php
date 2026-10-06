@@ -88,6 +88,7 @@ $role = \App\Auth::role();
                     <?php foreach ($list as $u): ?><option value="<?= $u['id'] ?>"><?= e($u['name']) ?></option><?php endforeach; ?>
                 </select>
             <?php endforeach; ?>
+            <span class="small text-muted">AI:</span> <?= ai_select() ?>
             <button class="btn btn-sm btn-dark">Thực hiện</button>
         </div>
 

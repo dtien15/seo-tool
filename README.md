@@ -57,7 +57,7 @@ cPanel → **Cron Jobs** → thêm lệnh chạy **mỗi phút** (`* * * * *`):
 
 ## 4. Cấu hình lần đầu (tài khoản admin)
 
-1. **Cài đặt hệ thống**: nhập Claude API key, OpenAI API key, tải file JSON Service Account, rồi bấm *Kiểm tra*.
+1. **Cài đặt hệ thống → Kết nối AI**: nhập API key Claude và/hoặc OpenAI rồi bấm *Lưu* – hệ thống tự kiểm tra kết nối (✓). Ở mỗi chức năng AI sẽ có ô chọn AI, chỉ hiện các AI đã kết nối. Tải file JSON Service Account cho Google Sheet.
 2. **Tài khoản**: cấp tài khoản theo vai trò, đặt hạn mức $/tháng nếu cần.
 3. SEO đăng nhập → **Tạo dự án** → điền thông tin, kết nối WordPress bằng **Application Password** (WP Admin → Người dùng → Hồ sơ → Application Passwords).
 4. Tab **Interlink**: quét sitemap.

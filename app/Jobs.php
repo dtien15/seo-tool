@@ -19,7 +19,7 @@ class Jobs
     public static function handle(array $job): void
     {
         $payload = json_decode((string)$job['payload'], true) ?: [];
-        $ctx = ['user_id' => $job['user_id'], 'project_id' => $job['project_id'], 'article_id' => $job['article_id']];
+        $ctx = ['user_id' => $job['user_id'], 'project_id' => $job['project_id'], 'article_id' => $job['article_id'], 'ai' => $payload['ai'] ?? null];
         match ($job['type']) {
             'outline' => self::outline((int)$payload['article_id'], $ctx),
             'write' => self::write((int)$payload['article_id'], $ctx),

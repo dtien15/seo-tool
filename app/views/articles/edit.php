@@ -121,7 +121,8 @@ $roleOf = ['admin' => 'Admin', 'leader' => 'TP', 'seo' => 'SEO', 'content' => 'C
                 <div class="card-header bg-white d-flex align-items-center">
                     <a class="text-decoration-none text-body fw-semibold" data-bs-toggle="collapse" href="#outline-box"><i class="bi bi-list-nested"></i> Outline</a>
                     <?php if (\App\Auth::is('seo', 'leader') && in_array($a['status'], ['plan', 'outline'], true)): ?>
-                        <button class="btn btn-sm btn-outline-primary ms-auto" form="task-form" name="task" value="outline" <?= $busy || !$hasAi ? 'disabled' : '' ?>
+                        <span class="ms-auto me-1"><?= $hasAi ? ai_select('task-form') : '' ?></span>
+                        <button class="btn btn-sm btn-outline-primary" form="task-form" name="task" value="outline" <?= $busy || !$hasAi ? 'disabled' : '' ?>
                             <?= $a['outline'] ? 'data-confirm="Tạo lại outline sẽ thay outline hiện tại. Tiếp tục?"' : '' ?>><i class="bi bi-stars"></i> AI tạo outline</button>
                     <?php endif; ?>
                 </div>
@@ -155,6 +156,7 @@ $roleOf = ['admin' => 'Admin', 'leader' => 'TP', 'seo' => 'SEO', 'content' => 'C
                             <button class="btn btn-sm btn-outline-secondary" form="wp-import-form" <?= $a['content'] ? 'data-confirm="Thay nội dung hiện tại bằng nội dung đang có trên WordPress?"' : '' ?>><i class="bi bi-cloud-download"></i> Lấy nội dung từ WordPress</button>
                         <?php endif; ?>
                         <?php if (in_array($a['status'], ['writing', 'revise'], true) && $perm['content']): ?>
+                            <?= $hasAi ? ai_select('task-form') : '' ?>
                             <button class="btn btn-sm btn-primary" form="task-form" name="task" value="write" <?= $busy || !$hasAi ? 'disabled' : '' ?>
                                 <?= $a['content'] ? 'data-confirm="AI viết lại sẽ thay toàn bộ nội dung hiện tại. Tiếp tục?"' : '' ?>>
                                 <i class="bi bi-stars"></i> <?= $a['content'] ? 'AI viết lại' : 'AI viết bản nháp' ?>

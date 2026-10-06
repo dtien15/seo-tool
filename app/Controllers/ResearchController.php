@@ -461,7 +461,7 @@ class ResearchController
         if ($action === 'cluster_ai') {
             if (!Queue::projectHasPending($id, 'cluster_keywords')) {
                 \App\Usage::assertWithinBudget((int)$user['id']);
-                Queue::push('cluster_keywords', ['only_missing' => input('only_missing') ? 1 : 0], ['project_id' => $id, 'user_id' => $user['id']]);
+                Queue::push('cluster_keywords', ['only_missing' => input('only_missing') ? 1 : 0, 'ai' => chosen_ai()], ['project_id' => $id, 'user_id' => $user['id']]);
             }
             flash('info', 'AI đang gom nhóm chủ đề (khoảng 1-2 phút). Tải lại trang sau ít phút.');
             redirect("/projects/$id/keywords");
@@ -548,7 +548,7 @@ class ResearchController
         if (!\App\Services\AiText::ready()) {
             throw new \RuntimeException('Chưa cấu hình AI (API key) trong Cài đặt hệ thống.');
         }
-        $payload = [];
+        $payload = ['ai' => chosen_ai()];
         $key = $task;
         $back = "/projects/$id";
         switch ($task) {

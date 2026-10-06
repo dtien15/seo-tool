@@ -401,7 +401,33 @@ function ai_button(int $projectId, string $task, string $label, array $fields = 
         return '<button type="button" class="btn btn-sm btn-light border" disabled data-ai-pending><span class="spinner-border spinner-border-sm"></span> AI đang làm...</button>';
     }
     $ready = \App\Services\AiText::ready();
-    return '<form method="post" action="' . e(url('/projects/' . $projectId . '/ai')) . '" class="d-inline"' . ($confirm ? ' data-confirm="' . e($confirm) . '"' : '') . '>'
-        . $csrf . $hidden
-        . '<button class="btn btn-sm ' . e($class) . '"' . ($ready ? '' : ' disabled title="Chưa cấu hình AI trong Cài đặt hệ thống"') . '><i class="bi bi-stars"></i> ' . e($label) . '</button></form>';
+    return '<form method="post" action="' . e(url('/projects/' . $projectId . '/ai')) . '" class="d-inline-flex gap-1 align-items-center"' . ($confirm ? ' data-confirm="' . e($confirm) . '"' : '') . '>'
+        . $csrf . $hidden . ($ready ? ai_select() : '')
+        . '<button class="btn btn-sm text-nowrap ' . e($class) . '"' . ($ready ? '' : ' disabled title="Chưa kết nối AI trong Cài đặt hệ thống"') . '><i class="bi bi-stars"></i> ' . e($label) . '</button></form>';
+}
+
+
+/** Ô chọn AI (chỉ các AI đã kết nối). $form: gắn vào form khác qua thuộc tính form="...". */
+function ai_select(string $form = '', string $cap = 'text', string $class = ''): string
+{
+    $list = \App\Services\AiText::connected($cap);
+    if (!$list) {
+        return '<span class="small text-danger" title="Cài đặt hệ thống → Kết nối AI">Chưa kết nối AI</span>';
+    }
+    $selected = $_SESSION['ai_last'] ?? '';
+    $html = '<select name="ai" class="form-select form-select-sm w-auto d-inline-block ' . e($class) . '" title="Chọn AI thực hiện"' . ($form ? ' form="' . e($form) . '"' : '') . '>';
+    foreach ($list as $k => $label) {
+        $html .= '<option value="' . e($k) . '"' . ($k === $selected ? ' selected' : '') . '>' . e($label) . '</option>';
+    }
+    return $html . '</select>';
+}
+
+/** Lấy AI người dùng chọn (và nhớ cho lần sau). */
+function chosen_ai(string $cap = 'text'): string
+{
+    $ai = \App\Services\AiText::pick((string)input('ai', '') ?: null, $cap);
+    if ($cap === 'text') {
+        $_SESSION['ai_last'] = $ai;
+    }
+    return $ai;
 }

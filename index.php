@@ -147,7 +147,7 @@ $routes = [
 
     ['GET',  '/settings',                         'SettingsController@index'],
     ['POST', '/settings',                         'SettingsController@save'],
-    ['POST', '/settings/test-claude',             'SettingsController@testClaude'],
+    ['POST', '/settings/test-ai',                 'SettingsController@testAi'],
     ['POST', '/settings/test-google',             'SettingsController@testGoogle'],
 
     ['GET',  '/usage',                            'SettingsController@usage'],

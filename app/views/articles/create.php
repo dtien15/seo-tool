@@ -42,6 +42,7 @@
                         <option value="">Để ở Kế hoạch</option>
                         <option value="outline">AI tạo outline luôn</option>
                     </select>
+                    <div class="mt-1"><?= ai_select() ?></div>
                 </div>
             </div>
         <?php }; ?>

@@ -18,7 +18,6 @@ class SettingsController
         view('settings', [
             'pageTitle' => 'Cài đặt hệ thống',
             'hasClaude' => Settings::has('anthropic_api_key'),
-            'provider' => \App\Services\AiText::provider(),
             'hasOpenAI' => Settings::has('openai_api_key'),
             'serviceEmail' => GoogleSheetsService::serviceEmail(),
             'sdkInstalled' => class_exists(\Anthropic\Client::class),
@@ -30,13 +29,20 @@ class SettingsController
     public function save(): void
     {
         Auth::requireAdmin();
-        foreach (['anthropic_api_key', 'openai_api_key', 'pagespeed_api_key'] as $k) {
+        $retest = [];
+        foreach (['anthropic_api_key' => 'anthropic', 'openai_api_key' => 'openai', 'pagespeed_api_key' => null] as $k => $provider) {
             $v = trim((string)($_POST[$k] ?? ''));
             if ($v !== '') {
                 Settings::set($k, $v);
+                if ($provider) {
+                    $retest[$provider] = true;
+                }
             }
             if (input('clear_' . $k)) {
                 Settings::set($k, null);
+                if ($provider) {
+                    Settings::set('ai_status_' . $provider, null);
+                }
             }
         }
         $json = trim((string)($_POST['google_service_account'] ?? ''));
@@ -51,10 +57,11 @@ class SettingsController
             Settings::set('google_service_account', $json);
         }
 
-        if (isset(\App\Services\AiText::PROVIDERS[input('ai_provider')])) {
-            Settings::set('ai_provider', (string)input('ai_provider'));
-        }
+        $oldModel = (string)Settings::get('openai_text_model', '');
         Settings::set('openai_text_model', mb_substr(trim((string)input('openai_text_model', '')), 0, 80));
+        if ($oldModel !== (string)Settings::get('openai_text_model', '') && \App\Services\AiText::hasKey('openai')) {
+            $retest['openai'] = true;
+        }
         foreach (['openai_price_in', 'openai_price_out'] as $k) {
             $v = trim((string)input($k, ''));
             Settings::set($k, $v === '' ? '' : (string)max(0, (float)$v));
@@ -77,19 +84,22 @@ class SettingsController
         $budget = trim((string)input('default_monthly_budget', ''));
         Settings::set('default_monthly_budget', $budget === '' ? '' : (string)max(0, (float)$budget));
 
-        flash('success', 'Đã lưu cài đặt hệ thống.');
+        $msg = 'Đã lưu cài đặt hệ thống.';
+        $hasError = false;
+        foreach (array_keys($retest) as $provider) {
+            $st = \App\Services\AiText::test($provider);
+            $hasError = $hasError || !$st['ok'];
+            $msg .= ' ' . \App\Services\AiText::label($provider) . ': ' . ($st['ok'] ? 'kết nối OK.' : 'LỖI – ' . $st['message']);
+        }
+        flash($hasError ? 'warning' : 'success', $msg);
         redirect('/settings');
     }
 
-    public function testClaude(): void
+    public function testAi(): void
     {
         Auth::requireAdmin();
-        try {
-            $res = \App\Services\AiText::complete('Bạn là trợ lý ngắn gọn.', 'Trả lời đúng một câu: "Kết nối thành công".', 2000, ['user_id' => Auth::id()], 'test');
-            json_response(['ok' => true, 'message' => trim($res['text']) . ' (' . \App\Services\AiText::PROVIDERS[\App\Services\AiText::provider()] . ' · ' . $res['model'] . ')']);
-        } catch (\Throwable $e) {
-            json_response(['ok' => false, 'error' => $e->getMessage()]);
-        }
+        $st = \App\Services\AiText::test((string)input('provider'));
+        json_response($st['ok'] ? ['ok' => true, 'message' => $st['message']] : ['ok' => false, 'error' => $st['message']]);
     }
 
     public function testGoogle(): void

@@ -90,8 +90,9 @@ class ArticleController
 
         $queued = 0;
         if (input('then') === 'outline') {
+            $ai = chosen_ai();
             foreach ($ids as $id) {
-                Queue::articleTask('outline', $id, (int)$user['id']);
+                Queue::articleTask('outline', $id, (int)$user['id'], ['ai' => $ai]);
                 $queued++;
             }
         }
@@ -253,8 +254,13 @@ class ArticleController
         if (!isset(self::TASK_LABELS[$task])) {
             throw new \RuntimeException('Tác vụ không hợp lệ.');
         }
-        Queue::articleTask($task, $id, (int)$user['id']);
-        flash('info', 'Đã đưa vào hàng đợi ' . self::TASK_LABELS[$task] . '. Trang sẽ tự cập nhật khi xong.');
+        $payload = match ($task) {
+            'outline', 'write' => ['ai' => chosen_ai()],
+            'images' => ['ai' => chosen_ai('image')],
+            default => [],
+        };
+        Queue::articleTask($task, $id, (int)$user['id'], $payload);
+        flash('info', 'Đã đưa vào hàng đợi ' . self::TASK_LABELS[$task] . (isset($payload['ai']) ? ' (' . \App\Services\AiText::label($payload['ai']) . ')' : '') . '. Trang sẽ tự cập nhật khi xong.');
         redirect('/articles/' . $id);
     }
 
@@ -335,7 +341,7 @@ class ArticleController
         $user = Auth::requireLogin();
         Article::findOrFail($id);
         $prompt = trim((string)input('prompt', ''));
-        Queue::articleTask('image', $id, (int)$user['id'], ['image_id' => $imageId, 'prompt' => $prompt ?: null]);
+        Queue::articleTask('image', $id, (int)$user['id'], ['image_id' => $imageId, 'prompt' => $prompt ?: null, 'ai' => chosen_ai('image')]);
         flash('info', 'AI đang tạo hình...');
         redirect('/articles/' . $id . '#images');
     }
@@ -410,13 +416,14 @@ class ArticleController
         $articles = db()->fetchAll("SELECT * FROM articles a WHERE a.project_id = ? AND a.id IN ($in) AND $scope", array_merge([$projectId], $ids, $scopeParams));
         $action = (string)input('action');
         $isManager = Auth::is('seo', 'leader');
+        $aiPayload = in_array($action, ['outline', 'write'], true) ? ['ai' => chosen_ai()] : ($action === 'images' ? ['ai' => chosen_ai('image')] : []);
         $ok = 0;
         $errors = [];
 
         foreach ($articles as $a) {
             try {
                 if (isset(self::TASK_LABELS[$action])) {
-                    Queue::articleTask($action, (int)$a['id'], (int)$user['id']);
+                    Queue::articleTask($action, (int)$a['id'], (int)$user['id'], $aiPayload);
                 } elseif (str_starts_with($action, 'flow:')) {
                     Workflow::apply(substr($action, 5), (int)$a['id'], (string)input('note', ''));
                 } elseif (str_starts_with($action, 'status:') && Auth::is('leader')) {
