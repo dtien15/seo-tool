@@ -8,7 +8,7 @@ foreach ($competitors as $c) {
 }
 $fmt = fn($n) => $n === null ? '–' : number_format((float)$n);
 ?>
-<p class="text-muted small">Phân tích đối thủ: từ khóa đang lên top, traffic theo thời gian (từ khi mới làm web đến nay), backlink và content. Số liệu lấy từ Ahrefs / Semrush: xuất file CSV rồi import, hoặc nhập tay theo tháng.</p>
+<p class="text-muted small">Phân tích đối thủ: từ khóa đang lên top, traffic theo thời gian (từ khi mới làm web đến nay), backlink và content. Số liệu lấy từ Ahrefs / Semrush: xuất file CSV rồi import, hoặc nhập tay theo tháng. Bấm <b>"AI phân tích đối thủ"</b> để AI đọc website đối thủ (cùng số liệu đã nhập) và viết nhận xét content / backlink.</p>
 
 <div class="row g-4">
     <div class="col-lg-3">
@@ -42,7 +42,8 @@ $fmt = fn($n) => $n === null ? '–' : number_format((float)$n);
                     <strong><i class="bi bi-globe"></i> <?= e($current['domain']) ?></strong>
                     <a href="https://<?= e($current['domain']) ?>" target="_blank" rel="noopener" class="ms-2 small"><i class="bi bi-box-arrow-up-right"></i></a>
                     <?php if ($canEdit): ?>
-                        <form method="post" action="<?= url('/competitors/' . $current['id'] . '/delete') ?>" class="ms-auto" data-confirm="Xóa đối thủ này và toàn bộ số liệu?">
+                        <span class="ms-auto"><?= ai_button((int)$project['id'], 'ai_competitor', 'AI phân tích đối thủ', ['competitor_id' => $current['id']], $aiPending, 'ai_competitor:' . $current['id']) ?></span>
+                        <form method="post" action="<?= url('/competitors/' . $current['id'] . '/delete') ?>" class="ms-2" data-confirm="Xóa đối thủ này và toàn bộ số liệu?">
                             <?= csrf_field() ?><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                         </form>
                     <?php endif; ?>

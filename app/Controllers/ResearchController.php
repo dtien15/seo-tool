@@ -140,6 +140,7 @@ class ResearchController
             'project' => $project,
             'sections' => $this->sections($id),
             'canEdit' => Auth::is('seo', 'leader'),
+            'aiPending' => self::aiPending($id),
             'tab' => 'research',
         ]);
     }
@@ -187,6 +188,7 @@ class ResearchController
             'selected' => $selected,
             'topKeywords' => $topKeywords,
             'canEdit' => Auth::is('seo', 'leader'),
+            'aiPending' => self::aiPending($id),
             'tab' => 'competitors',
         ]);
     }
@@ -344,6 +346,7 @@ class ResearchController
             'items' => $items,
             'sections' => $this->sections($id),
             'canEdit' => Auth::is('seo', 'leader'),
+            'aiPending' => self::aiPending($id),
             'tab' => 'website',
         ]);
     }
@@ -407,6 +410,7 @@ class ResearchController
             'unclustered' => (int)db()->value("SELECT COUNT(*) FROM keywords WHERE project_id = ? AND (cluster IS NULL OR cluster = '')", [$id]),
             'clusterJob' => Queue::projectHasPending($id, 'cluster_keywords'),
             'canEdit' => Auth::is('seo', 'leader'),
+            'aiPending' => self::aiPending($id),
             'tab' => 'keywords',
         ]);
     }
@@ -509,6 +513,93 @@ class ResearchController
         redirect("/projects/$id/keywords" . query_with([]));
     }
 
+    // ------------------------------------------------------------ AI hỗ trợ
+
+    /** Các tác vụ AI đang chờ / đang chạy của dự án, dạng "ai_research:customer", "ai_competitor:3", "ai_audit"... */
+    public static function aiPending(int $projectId): array
+    {
+        $keys = [];
+        $jobs = db()->fetchAll(
+            "SELECT type, payload FROM jobs WHERE project_id = ? AND status IN ('pending','running') AND (type LIKE 'ai!_%' ESCAPE '!' OR type = 'cluster_keywords')",
+            [$projectId]
+        );
+        foreach ($jobs as $j) {
+            $p = json_decode((string)$j['payload'], true) ?: [];
+            $keys[] = $j['type'];
+            if (isset($p['section'])) {
+                $keys[] = $j['type'] . ':' . $p['section'];
+            }
+            if (isset($p['competitor_id'])) {
+                $keys[] = $j['type'] . ':' . $p['competitor_id'];
+            }
+        }
+        return array_values(array_unique($keys));
+    }
+
+    /** Bấm nút "AI làm" ở các bước nghiên cứu: đưa tác vụ vào hàng đợi. */
+    public function ai(int $id): void
+    {
+        $user = Auth::requireRole('seo', 'leader');
+        $project = $this->project($id);
+        $task = (string)input('task');
+        if (!isset(\App\Services\ResearchAi::TASKS[$task])) {
+            throw new \RuntimeException('Tác vụ AI không hợp lệ.');
+        }
+        if (!\App\Services\AiText::ready()) {
+            throw new \RuntimeException('Chưa cấu hình AI (API key) trong Cài đặt hệ thống.');
+        }
+        $payload = [];
+        $key = $task;
+        $back = "/projects/$id";
+        switch ($task) {
+            case 'ai_research':
+                $section = (string)input('section');
+                if (!isset(self::SECTIONS[$section]) && $section !== 'build_plan') {
+                    throw new \RuntimeException('Mục nghiên cứu không hợp lệ.');
+                }
+                $payload['section'] = $section;
+                $key .= ':' . $section;
+                $back .= ($section === 'build_plan' ? '/website' : '/research') . '#' . $section;
+                break;
+            case 'ai_competitor':
+                $cid = (int)input('competitor_id');
+                if (!db()->value('SELECT 1 FROM competitors WHERE id = ? AND project_id = ?', [$cid, $id])) {
+                    throw new \RuntimeException('Đối thủ không tồn tại.');
+                }
+                $payload['competitor_id'] = $cid;
+                $key .= ':' . $cid;
+                $back .= '/competitors?c=' . $cid;
+                break;
+            case 'ai_audit':
+                if (!$project['wp_url'] && !$project['domain']) {
+                    throw new \RuntimeException('Dự án chưa nhập domain website (Cài đặt dự án).');
+                }
+                $payload['overwrite'] = input('overwrite') ? 1 : 0;
+                $back .= '/website';
+                break;
+            case 'ai_keywords':
+                $payload['count'] = max(10, min(100, (int)input('count', 40)));
+                $back .= '/keywords';
+                break;
+            case 'ai_kpi':
+                $payload['months'] = max(1, min(24, (int)input('months', 6)));
+                $back .= '/kpi';
+                break;
+            case 'ai_content_audit':
+                $payload['limit'] = 20;
+                $back .= '/links?audit=__none';
+                break;
+        }
+        if (in_array($key, self::aiPending($id), true)) {
+            flash('info', 'Tác vụ này đang chạy, vui lòng đợi.');
+            redirect($back);
+        }
+        \App\Usage::assertWithinBudget((int)$user['id']);
+        Queue::push($task, $payload, ['project_id' => $id, 'user_id' => $user['id']]);
+        flash('info', \App\Services\ResearchAi::TASKS[$task] . ': đã đưa vào hàng đợi, khoảng 1-3 phút. Trang sẽ tự tải lại khi xong (nếu bạn không đang nhập liệu).');
+        redirect($back);
+    }
+
     // ------------------------------------------------------------ KPI
 
     public function kpi(int $id): void
@@ -530,7 +621,9 @@ class ResearchController
             'project' => $project,
             'grid' => $grid,
             'published' => $published,
+            'kpiNote' => (string)db()->value("SELECT content FROM project_research WHERE project_id = ? AND section = 'kpi_note'", [$id]),
             'canEdit' => Auth::is('seo', 'leader'),
+            'aiPending' => self::aiPending($id),
             'tab' => 'kpi',
         ]);
     }

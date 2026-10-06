@@ -65,6 +65,7 @@ $jobStatus = ['pending' => 'đang chờ', 'running' => 'đang chạy', 'done' =>
                     <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
                 </form>
                 <?php if ($pg['total']): ?>
+                    <?= ai_button((int)$project['id'], 'ai_content_audit', 'AI rà soát 20 trang', [], $aiPending) ?>
                     <form method="post" action="<?= url('/projects/' . $project['id'] . '/links/clear') ?>" data-confirm="Xóa toàn bộ link nội bộ của dự án?">
                         <?= csrf_field() ?><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                     </form>

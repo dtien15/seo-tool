@@ -142,6 +142,15 @@
             </div>
 
             <div class="card mb-4">
+                <div class="card-header bg-white"><strong><i class="bi bi-speedometer"></i> PageSpeed API key (kiểm tra tốc độ website)</strong></div>
+                <div class="card-body">
+                    <input type="password" name="pagespeed_api_key" class="form-control" autocomplete="new-password" placeholder="<?= Settings::has('pagespeed_api_key') ? '•••••••• đã lưu (để trống nếu không đổi)' : 'AIza...' ?>">
+                    <div class="form-text">Miễn phí. Google Cloud Console → bật <b>PageSpeed Insights API</b> → APIs &amp; Services → Credentials → Create credentials → API key. Dùng khi bấm "AI kiểm tra website".</div>
+                    <?php if (Settings::has('pagespeed_api_key')): ?><label class="small mt-1"><input type="checkbox" name="clear_pagespeed_api_key" value="1"> Xóa key</label><?php endif; ?>
+                </div>
+            </div>
+
+            <div class="card mb-4">
                 <div class="card-header bg-white"><strong><i class="bi bi-wallet2"></i> Hạn mức chi phí</strong></div>
                 <div class="card-body">
                     <label class="form-label">Hạn mức mặc định cho mỗi SEOer (USD/tháng)</label>

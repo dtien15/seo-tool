@@ -6,6 +6,15 @@ $fmt = fn($v) => $v === null ? '' : rtrim(rtrim(number_format((float)$v, 2, '.',
 ?>
 <p class="text-muted small">Lên KPI theo tháng. Số bài đăng thực tế được tính tự động từ các bài đã đăng; các chỉ số khác nhập từ Google Search Console / Analytics / Ahrefs.</p>
 
+<?php if ($canEdit): ?>
+    <div class="card mb-3 border-primary-subtle">
+        <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+            <div class="me-auto small"><b><i class="bi bi-stars"></i> AI đề xuất KPI</b> dựa trên bộ từ khóa, kế hoạch bài viết, số liệu đối thủ. Chỉ điền vào ô mục tiêu còn trống<?= $grid ? '' : ' (tự tạo 6 tháng tới)' ?>.</div>
+            <?= ai_button((int)$project['id'], 'ai_kpi', 'AI đề xuất KPI', ['months' => 6], $aiPending) ?>
+        </div>
+        <?php if ($kpiNote): ?><div class="card-footer bg-white small"><b>Giải thích của AI:</b><br><?= nl2br(e($kpiNote)) ?></div><?php endif; ?>
+    </div>
+<?php endif; ?>
 <form method="post" action="<?= url('/projects/' . $project['id'] . '/kpi') ?>">
     <?= csrf_field() ?>
     <?php if ($canEdit): ?>

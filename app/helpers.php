@@ -349,15 +349,30 @@ function http_request(string $method, string $url, array $opts = []): array
     if (array_key_exists('body', $opts) && $opts['body'] !== null) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $opts['body']);
     }
+    $respHeaders = [];
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, string $line) use (&$respHeaders): int {
+        if (str_starts_with($line, 'HTTP/')) {
+            $respHeaders = []; // chỉ giữ header của response cuối (sau redirect)
+        } elseif (str_contains($line, ':')) {
+            [$k, $v] = explode(':', $line, 2);
+            $respHeaders[strtolower(trim($k))] = trim($v);
+        }
+        return strlen($line);
+    });
     $body = curl_exec($ch);
     $error = curl_error($ch);
     $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $finalUrl = (string)curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+    $time = (float)curl_getinfo($ch, CURLINFO_TOTAL_TIME);
     curl_close($ch);
     return [
         'status' => $status,
         'body' => $body === false ? '' : (string)$body,
         'error' => $error,
         'json' => is_string($body) ? json_decode($body, true) : null,
+        'headers' => $respHeaders,
+        'final_url' => $finalUrl,
+        'time' => $time,
     ];
 }
 
@@ -368,4 +383,25 @@ function log_error(string $message): void
         @mkdir($dir, 0775, true);
     }
     @file_put_contents($dir . '/app-' . date('Y-m') . '.log', '[' . now() . '] ' . $message . PHP_EOL, FILE_APPEND);
+}
+
+/**
+ * Nút "AI làm" ở các bước nghiên cứu (POST /projects/{id}/ai).
+ * $pendingKey: khóa tác vụ để biết đang chạy (xem ResearchController::aiPending).
+ */
+function ai_button(int $projectId, string $task, string $label, array $fields = [], array $pending = [], ?string $pendingKey = null, string $class = 'btn-outline-primary', string $confirm = ''): string
+{
+    $key = $pendingKey ?? $task;
+    $csrf = csrf_field();
+    $hidden = '<input type="hidden" name="task" value="' . e($task) . '">';
+    foreach ($fields as $k => $v) {
+        $hidden .= '<input type="hidden" name="' . e($k) . '" value="' . e($v) . '">';
+    }
+    if (in_array($key, $pending, true)) {
+        return '<button type="button" class="btn btn-sm btn-light border" disabled data-ai-pending><span class="spinner-border spinner-border-sm"></span> AI đang làm...</button>';
+    }
+    $ready = \App\Services\AiText::ready();
+    return '<form method="post" action="' . e(url('/projects/' . $projectId . '/ai')) . '" class="d-inline"' . ($confirm ? ' data-confirm="' . e($confirm) . '"' : '') . '>'
+        . $csrf . $hidden
+        . '<button class="btn btn-sm ' . e($class) . '"' . ($ready ? '' : ' disabled title="Chưa cấu hình AI trong Cài đặt hệ thống"') . '><i class="bi bi-stars"></i> ' . e($label) . '</button></form>';
 }

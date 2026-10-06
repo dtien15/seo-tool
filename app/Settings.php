@@ -6,7 +6,7 @@ namespace App;
 /** Cài đặt hệ thống (lưu trong bảng settings). Các key bí mật được mã hóa. */
 class Settings
 {
-    public const SECRET_KEYS = ['anthropic_api_key', 'openai_api_key', 'google_service_account'];
+    public const SECRET_KEYS = ['anthropic_api_key', 'openai_api_key', 'google_service_account', 'pagespeed_api_key'];
 
     public const DEFAULTS = [
         'claude_model' => 'claude-opus-5-5',

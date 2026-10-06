@@ -115,6 +115,13 @@
         });
     });
 
+    // Có tác vụ AI đang chạy: tự tải lại trang khi xong (bỏ qua nếu người dùng đang nhập liệu)
+    if (document.querySelector('[data-ai-pending]')) {
+        let typing = false;
+        document.addEventListener('input', () => (typing = true));
+        setInterval(() => { if (!typing) location.reload(); }, 15000);
+    }
+
     // Kiểm tra kết nối WordPress
     document.querySelectorAll('[data-wp-test]').forEach((btn) => {
         btn.addEventListener('click', async () => {

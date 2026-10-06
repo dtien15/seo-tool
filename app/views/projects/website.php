@@ -4,6 +4,31 @@ use App\Controllers\ResearchController as R;
 require __DIR__ . '/_tabs.php';
 $plan = $sections['build_plan'] ?? null;
 ?>
+<?php $checks = json_decode((string)($sections['audit_checks']['content'] ?? ''), true) ?: []; ?>
+<?php if ($project['has_website'] && $canEdit): ?>
+    <div class="card mb-3 border-primary-subtle">
+        <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+            <div class="me-auto small">
+                <b><i class="bi bi-stars"></i> Để AI kiểm tra:</b> tool tự kiểm tra kỹ thuật (HTTPS, chuyển hướng, robots, sitemap, 404, title, meta, H1, canonical, alt ảnh, schema, PageSpeed),
+                đọc vài trang rồi AI điền checklist, kết luận và phương án đề xuất. Chỉ điền mục còn "Chưa kiểm tra".
+            </div>
+            <?= ai_button((int)$project['id'], 'ai_audit', 'AI kiểm tra website', [], $aiPending) ?>
+            <?php if (!in_array('ai_audit', $aiPending, true)): ?>
+                <?= ai_button((int)$project['id'], 'ai_audit', 'Kiểm tra lại & ghi đè', ['overwrite' => 1], $aiPending, 'ai_audit', 'btn-outline-secondary', 'AI sẽ ghi đè trạng thái / ghi chú của tất cả các mục và kết luận. Tiếp tục?') ?>
+            <?php endif; ?>
+        </div>
+        <?php if ($checks): ?>
+            <details class="card-footer bg-white small">
+                <summary>Kết quả kiểm tra kỹ thuật lần gần nhất (<?= e(time_ago($sections['audit_checks']['updated_at'])) ?>)</summary>
+                <ul class="list-unstyled mb-0 mt-2">
+                    <?php foreach ($checks as [$label, $ok, $detail]): ?>
+                        <li><i class="bi <?= $ok === null ? 'bi-question-circle text-muted' : ($ok ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger') ?>"></i> <b><?= e($label) ?>:</b> <?= e($detail) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </details>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
 <form method="post" action="<?= url('/projects/' . $project['id'] . '/website') ?>">
     <?= csrf_field() ?>
     <div class="card mb-3">
@@ -72,6 +97,7 @@ $plan = $sections['build_plan'] ?? null;
 </form>
 
 <?php if (!$project['has_website']): ?>
+    <?php if ($canEdit): ?><div class="text-end mb-2"><?= ai_button((int)$project['id'], 'ai_research', 'AI viết nháp kế hoạch build website', ['section' => 'build_plan'], $aiPending, 'ai_research:build_plan') ?></div><?php endif; ?>
     <form method="post" action="<?= url('/projects/' . $project['id'] . '/research') ?>" class="card" id="build_plan">
         <?= csrf_field() ?>
         <input type="hidden" name="section" value="build_plan">

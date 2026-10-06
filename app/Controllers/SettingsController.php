@@ -30,7 +30,7 @@ class SettingsController
     public function save(): void
     {
         Auth::requireAdmin();
-        foreach (['anthropic_api_key', 'openai_api_key'] as $k) {
+        foreach (['anthropic_api_key', 'openai_api_key', 'pagespeed_api_key'] as $k) {
             $v = trim((string)($_POST[$k] ?? ''));
             if ($v !== '') {
                 Settings::set($k, $v);

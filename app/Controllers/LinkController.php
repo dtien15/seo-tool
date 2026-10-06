@@ -59,6 +59,7 @@ class LinkController
             'jobs' => $pending,
             'untitled' => (int)db()->value('SELECT COUNT(*) FROM internal_links WHERE project_id = ? AND title_fetched = 0', [$id]),
             'auditCounts' => $auditCounts,
+            'aiPending' => ResearchController::aiPending($id),
             'tab' => 'links',
         ]);
     }

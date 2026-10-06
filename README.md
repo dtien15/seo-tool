@@ -79,6 +79,8 @@ Content / Design chỉ thấy bài được giao cho mình.
 6. **Plan content**: danh sách bài và phân công SEO / Content / Design.
 7. **Nội dung web**: rà soát trang cũ (giữ / tối ưu / gộp / xóa) và tạo việc tối ưu lại.
 
+**AI hỗ trợ ở từng bước (tùy chọn – muốn làm tay thì cứ nhập như bình thường):** nút ✨ ở tab Nghiên cứu (AI viết nháp từng mục), Đối thủ (AI phân tích web đối thủ), Website (tự kiểm tra kỹ thuật + AI điền checklist, kết luận), Từ khóa (AI gợi ý, AI gom nhóm), KPI (AI đề xuất chỉ tiêu), Nội dung web (AI rà soát 20 trang/lần). AI chỉ điền vào chỗ trống hoặc nối thêm, không xóa phần đã nhập. Điểm tốc độ PageSpeed cần PageSpeed API key (miễn phí) trong Cài đặt hệ thống.
+
 **Luồng một bài viết:**
 
 `Kế hoạch → Outline (SEO) → TP duyệt outline → Viết bài (AI viết nháp, Content sửa) → SEO + TP duyệt bài → Làm hình (Design upload / AI) → SEO + TP duyệt hình → Sẵn sàng đăng → SEO đăng WordPress`

@@ -6,6 +6,7 @@ namespace App;
 use App\Models\Article;
 use App\Models\Project;
 use App\Services\AiText;
+use App\Services\ResearchAi;
 use App\Services\ContentWriter;
 use App\Services\ImageService;
 use App\Services\InternalLinker;
@@ -32,6 +33,12 @@ class Jobs
             'sheet_push_all' => SheetSync::pushAll(self::project((int)$job['project_id'])),
             'sheet_pull' => SheetSync::pull(self::project((int)$job['project_id'])),
             'cluster_keywords' => self::clusterKeywords((int)$job['project_id'], $ctx, !empty($payload['only_missing'])),
+            'ai_research' => ResearchAi::research(self::project((int)$job['project_id']), (string)$payload['section'], $ctx),
+            'ai_competitor' => ResearchAi::competitor(self::project((int)$job['project_id']), (int)$payload['competitor_id'], $ctx),
+            'ai_audit' => ResearchAi::audit(self::project((int)$job['project_id']), !empty($payload['overwrite']), $ctx),
+            'ai_keywords' => ResearchAi::keywords(self::project((int)$job['project_id']), (int)($payload['count'] ?? 40), $ctx),
+            'ai_kpi' => ResearchAi::kpi(self::project((int)$job['project_id']), (int)($payload['months'] ?? 6), $ctx),
+            'ai_content_audit' => ResearchAi::contentAudit(self::project((int)$job['project_id']), (int)($payload['limit'] ?? 20), $ctx),
             default => throw new \RuntimeException('Loại công việc không hỗ trợ: ' . $job['type']),
         };
     }

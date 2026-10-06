@@ -108,6 +108,7 @@ $routes = [
     ['POST', '/projects/(\d+)/keywords',          'ResearchController@storeKeywords'],
     ['POST', '/projects/(\d+)/keywords/bulk',     'ResearchController@bulkKeywords'],
     ['GET',  '/projects/(\d+)/kpi',               'ResearchController@kpi'],
+    ['POST', '/projects/(\d+)/ai',                'ResearchController@ai'],
     ['POST', '/projects/(\d+)/kpi',               'ResearchController@saveKpi'],
 
     ['GET',  '/projects/(\d+)/links',             'LinkController@index'],

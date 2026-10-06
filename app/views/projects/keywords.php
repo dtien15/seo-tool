@@ -27,8 +27,8 @@ $currentCluster = (string)input('cluster', '');
                 <form method="post" action="<?= url('/projects/' . $project['id'] . '/keywords/bulk') ?>" class="card-footer bg-white">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="cluster_ai">
-                    <?php if ($clusterJob): ?>
-                        <div class="small text-info"><span class="spinner-border spinner-border-sm"></span> AI đang gom nhóm...</div>
+                    <?php if ($clusterJob || in_array('cluster_keywords', $aiPending, true)): ?>
+                        <div class="small text-info" data-ai-pending><span class="spinner-border spinner-border-sm"></span> AI đang gom nhóm...</div>
                     <?php else: ?>
                         <label class="small d-block mb-2"><input type="checkbox" name="only_missing" value="1" checked> Chỉ từ khóa chưa có nhóm</label>
                         <button class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-stars"></i> AI gom nhóm chủ đề</button>
@@ -41,6 +41,18 @@ $currentCluster = (string)input('cluster', '');
             <div class="card">
                 <div class="card-header bg-white"><strong>Thêm từ khóa</strong></div>
                 <div class="card-body">
+                    <div class="border rounded p-2 mb-3 bg-light">
+                        <div class="small mb-2"><b><i class="bi bi-stars"></i> AI gợi ý từ khóa</b> dựa trên sản phẩm, hành vi khách và từ khóa đối thủ (không có số volume thật).</div>
+                        <?php if (in_array('ai_keywords', $aiPending, true)): ?>
+                            <?= ai_button((int)$project['id'], 'ai_keywords', '', [], $aiPending) ?>
+                        <?php else: ?>
+                            <form method="post" action="<?= url('/projects/' . $project['id'] . '/ai') ?>" class="d-flex gap-2">
+                                <?= csrf_field() ?><input type="hidden" name="task" value="ai_keywords">
+                                <input type="number" name="count" value="40" min="10" max="100" class="form-control form-control-sm" style="width:80px" title="Số từ khóa">
+                                <button class="btn btn-sm btn-outline-primary flex-grow-1" <?= \App\Services\AiText::ready() ? '' : 'disabled' ?>><i class="bi bi-stars"></i> Gợi ý</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
                     <form method="post" action="<?= url('/projects/' . $project['id'] . '/keywords') ?>" class="mb-3">
                         <?= csrf_field() ?>
                         <textarea name="lines" class="form-control form-control-sm mb-2 font-monospace" rows="5" placeholder="từ khóa | volume | nhóm&#10;niềng răng giá bao nhiêu | 5400 | Giá niềng răng"></textarea>

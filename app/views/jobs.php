@@ -3,7 +3,9 @@ $labels = ['pending' => ['Đang chờ', 'secondary'], 'running' => ['Đang chạ
 $types = [
     'outline' => 'Tạo outline', 'write' => 'Viết bài', 'images' => 'Tạo ảnh', 'image' => 'Tạo lại ảnh', 'publish' => 'Đăng WP',
     'import_sitemap' => 'Quét sitemap', 'import_wordpress' => 'Lấy link WP', 'fetch_titles' => 'Lấy tiêu đề',
-    'sheet_push' => 'Đẩy lên Sheet', 'cluster_keywords' => 'AI gom nhóm từ khóa', 'sheet_push_all' => 'Đẩy toàn bộ lên Sheet', 'sheet_pull' => 'Đọc Sheet',
+    'sheet_push' => 'Đẩy lên Sheet', 'cluster_keywords' => 'AI gom nhóm từ khóa',
+    'ai_research' => 'AI viết nháp nghiên cứu', 'ai_competitor' => 'AI phân tích đối thủ', 'ai_audit' => 'AI kiểm tra website',
+    'ai_keywords' => 'AI gợi ý từ khóa', 'ai_kpi' => 'AI đề xuất KPI', 'ai_content_audit' => 'AI rà soát nội dung web', 'sheet_push_all' => 'Đẩy toàn bộ lên Sheet', 'sheet_pull' => 'Đọc Sheet',
 ];
 ?>
 <h1 class="h4 mb-3">Hàng đợi xử lý</h1>
