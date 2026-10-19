@@ -44,6 +44,5 @@ $types = [
 
 <div class="card mt-3">
     <div class="card-header bg-white small fw-semibold"><i class="bi bi-terminal"></i> Nhật ký cron (40 dòng cuối)</div>
-    <pre class="card-body small mb-0" style="max-height:360px;overflow:auto;white-space:pre-wrap"><?= $log ? e(implode("
-", $log)) : 'Chưa có nhật ký – cron chưa chạy lần nào sau khi cập nhật.' ?></pre>
+    <pre class="card-body small mb-0" style="max-height:360px;overflow:auto;white-space:pre-wrap"><?= $log ? e(implode("\n", $log)) : 'Chưa có nhật ký – cron chưa chạy lần nào sau khi cập nhật.' ?></pre>
 </div>
