@@ -18,7 +18,8 @@ class Worker
 
     public function __construct()
     {
-        $this->id = gethostname() . ':' . getmypid() . ':' . substr(random_token(4), 0, 6);
+        // Ngắn gọn (cột locked_by 40 ký tự) – tên máy chủ hosting có thể rất dài nên chỉ lấy mã băm
+        $this->id = substr(md5((string)gethostname()), 0, 8) . ':' . getmypid() . ':' . substr(random_token(4), 0, 6);
     }
 
     public function run(): void
@@ -49,16 +50,21 @@ class Worker
 
     private function claim(): ?array
     {
-        $claimed = db()->query(
-            "UPDATE jobs SET status = 'running', locked_by = ?, locked_at = NOW(), attempts = attempts + 1
-             WHERE status = 'pending' AND available_at <= NOW() ORDER BY id LIMIT 1",
-            [$this->id]
-        )->rowCount();
-        if (!$claimed) {
-            return null;
+        // Lấy job chờ sớm nhất rồi giành quyền bằng UPDATE có điều kiện (an toàn khi nhiều worker chạy cùng lúc)
+        for ($try = 0; $try < 5; $try++) {
+            $id = db()->value("SELECT id FROM jobs WHERE status = 'pending' AND available_at <= NOW() ORDER BY id LIMIT 1");
+            if (!$id) {
+                return null;
+            }
+            $claimed = db()->query(
+                "UPDATE jobs SET status = 'running', locked_by = ?, locked_at = NOW(), attempts = attempts + 1 WHERE id = ? AND status = 'pending'",
+                [$this->id, $id]
+            )->rowCount();
+            if ($claimed) {
+                return db()->fetch('SELECT * FROM jobs WHERE id = ?', [$id]);
+            }
         }
-        $this->out('Đã nhận 1 job, đọc dữ liệu job...');
-        return db()->fetch("SELECT * FROM jobs WHERE locked_by = ? AND status = 'running' ORDER BY locked_at DESC, id DESC LIMIT 1", [$this->id]);
+        return null;
     }
 
     private function process(array $job): void
@@ -100,7 +106,7 @@ class Worker
     {
         register_shutdown_function([$this, 'onShutdown']);
         db()->update('jobs', ['status' => 'running', 'locked_by' => $this->id, 'locked_at' => now(), 'attempts' => 1, 'last_error' => null, 'finished_at' => null], "id = ? AND status <> 'done'", [$id]);
-        $job = db()->fetch("SELECT * FROM jobs WHERE id = ? AND locked_by = ?", [$id, $this->id]);
+        $job = db()->fetch("SELECT * FROM jobs WHERE id = ? AND status = 'running'", [$id]);
         if (!$job) {
             return null;
         }
