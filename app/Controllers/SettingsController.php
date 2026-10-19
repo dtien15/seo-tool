@@ -161,7 +161,7 @@ class SettingsController
         foreach (db()->fetchAll('SELECT status, COUNT(*) c FROM jobs GROUP BY status') as $r) {
             $counts[$r['status']] = (int)$r['c'];
         }
-        view('jobs', ['pageTitle' => 'Hàng đợi xử lý', 'jobs' => $jobs, 'counts' => $counts, 'status' => $status]);
+        view('jobs', ['pageTitle' => 'Hàng đợi xử lý', 'jobs' => $jobs, 'counts' => $counts, 'status' => $status, 'log' => \App\Worker::tail()]);
     }
 
     public function retryJob(int $id): void

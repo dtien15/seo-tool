@@ -83,7 +83,15 @@ class AiText
     public static function complete(string $system, string $prompt, int $maxTokens, array $ctx, string $task): array
     {
         $provider = self::pick($ctx['ai'] ?? null);
-        $res = self::call($provider, $system, $prompt, $maxTokens);
+        $t = microtime(true);
+        \App\Worker::log("  gọi $provider ($task), prompt " . strlen($prompt) . ' byte...');
+        try {
+            $res = self::call($provider, $system, $prompt, $maxTokens);
+        } catch (\Throwable $e) {
+            \App\Worker::log('  lỗi AI sau ' . round(microtime(true) - $t) . 's: ' . $e->getMessage());
+            throw $e;
+        }
+        \App\Worker::log('  AI trả về sau ' . round(microtime(true) - $t) . "s ({$res['model']}, {$res['input_tokens']}/{$res['output_tokens']} token)");
         $cost = $provider === 'openai'
             ? $res['input_tokens'] / 1_000_000 * (float)Settings::get('openai_price_in', '0') + $res['output_tokens'] / 1_000_000 * (float)Settings::get('openai_price_out', '0')
             : Usage::claudeCost($res['model'], $res['input_tokens'], $res['output_tokens']);

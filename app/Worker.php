@@ -35,6 +35,7 @@ class Worker
             return;
         }
 
+        $this->out('Worker bắt đầu (PHP ' . PHP_VERSION . ', RAM ' . ini_get('memory_limit') . ', time limit ' . ini_get('max_execution_time') . ')');
         $start = time();
         while (time() - $start < self::RUN_SECONDS) {
             $job = $this->claim();
@@ -144,10 +145,36 @@ class Worker
         }
     }
 
+    /** In ra màn hình và ghi nhật ký worker (xem ở trang Hàng đợi). */
+    public static function log(string $message): void
+    {
+        $line = '[' . date('Y-m-d H:i:s') . '] [' . getmypid() . '] ' . $message;
+        if (PHP_SAPI === 'cli') {
+            echo $line . PHP_EOL;
+        }
+        $dir = BASE_PATH . '/storage/logs';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        @file_put_contents($dir . '/worker.log', $line . PHP_EOL, FILE_APPEND);
+    }
+
+    /** N dòng cuối của nhật ký worker. */
+    public static function tail(int $lines = 40): array
+    {
+        $file = BASE_PATH . '/storage/logs/worker.log';
+        if (!is_file($file)) {
+            return [];
+        }
+        if (filesize($file) > 2_000_000) {
+            @rename($file, $file . '.old');
+            return [];
+        }
+        return array_slice(file($file, FILE_IGNORE_NEW_LINES) ?: [], -$lines);
+    }
+
     private function out(string $message): void
     {
-        if (PHP_SAPI === 'cli') {
-            echo '[' . now() . '] ' . $message . PHP_EOL;
-        }
+        self::log($message);
     }
 }
