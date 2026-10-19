@@ -164,6 +164,24 @@ class SettingsController
         view('jobs', ['pageTitle' => 'Hàng đợi xử lý', 'jobs' => $jobs, 'counts' => $counts, 'status' => $status, 'log' => \App\Worker::tail()]);
     }
 
+    /** Chạy ngay 1 job trên web (không chờ cron). */
+    public function runJob(int $id): void
+    {
+        Auth::requireAdmin();
+        @set_time_limit(600);
+        ignore_user_abort(true);
+        session_write_close();
+        $job = (new \App\Worker())->runJob($id);
+        if (!$job) {
+            flash('warning', 'Job #' . $id . ' đã xong hoặc không tồn tại.');
+        } elseif ($job['status'] === 'done') {
+            flash('success', 'Job #' . $id . ' chạy xong.');
+        } else {
+            flash('danger', 'Job #' . $id . ' lỗi: ' . $job['last_error']);
+        }
+        redirect('/jobs');
+    }
+
     public function retryJob(int $id): void
     {
         Auth::requireAdmin();

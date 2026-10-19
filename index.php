@@ -153,6 +153,7 @@ $routes = [
     ['GET',  '/usage',                            'SettingsController@usage'],
     ['GET',  '/jobs',                             'SettingsController@jobs'],
     ['POST', '/jobs/(\d+)/retry',                 'SettingsController@retryJob'],
+    ['POST', '/jobs/(\d+)/run',                   'SettingsController@runJob'],
 ];
 
 foreach ($routes as [$verb, $pattern, $handler]) {

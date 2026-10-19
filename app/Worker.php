@@ -24,6 +24,7 @@ class Worker
     public function run(): void
     {
         register_shutdown_function([$this, 'onShutdown']);
+        $this->out('Dọn job treo...');
         $this->recoverStale();
         $this->scheduleSheetPulls();
 
@@ -56,6 +57,7 @@ class Worker
         if (!$claimed) {
             return null;
         }
+        $this->out('Đã nhận 1 job, đọc dữ liệu job...');
         return db()->fetch("SELECT * FROM jobs WHERE locked_by = ? AND status = 'running' ORDER BY locked_at DESC, id DESC LIMIT 1", [$this->id]);
     }
 
@@ -93,15 +95,33 @@ class Worker
         $this->current = null;
     }
 
+    /** Chạy ngay 1 job (từ nút "Chạy ngay" trên web, không qua cron). Trả về job sau khi chạy. */
+    public function runJob(int $id): ?array
+    {
+        register_shutdown_function([$this, 'onShutdown']);
+        db()->update('jobs', ['status' => 'running', 'locked_by' => $this->id, 'locked_at' => now(), 'attempts' => 1, 'last_error' => null, 'finished_at' => null], "id = ? AND status <> 'done'", [$id]);
+        $job = db()->fetch("SELECT * FROM jobs WHERE id = ? AND locked_by = ?", [$id, $this->id]);
+        if (!$job) {
+            return null;
+        }
+        $this->out('Chạy ngay từ web (PHP ' . PHP_VERSION . ')');
+        $this->process($job);
+        return db()->fetch('SELECT * FROM jobs WHERE id = ?', [$id]);
+    }
+
     /** PHP chết giữa chừng (lỗi nghiêm trọng, hết bộ nhớ...) -> ghi lỗi vào job thay vì để treo. */
     public function onShutdown(): void
     {
         $err = error_get_last();
-        if (!$this->current || !$err || !in_array($err['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE, E_USER_ERROR], true)) {
+        if (!$err || !in_array($err['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE, E_USER_ERROR], true)) {
+            return;
+        }
+        $message = 'Lỗi PHP: ' . substr($err['message'], 0, 1500) . ' (' . basename($err['file']) . ':' . $err['line'] . ')';
+        self::log($message);
+        if (!$this->current) {
             return;
         }
         $job = $this->current;
-        $message = 'Lỗi PHP: ' . substr($err['message'], 0, 1500) . ' (' . basename($err['file']) . ':' . $err['line'] . ')';
         log_error("Job #{$job['id']} {$job['type']}: " . $message);
         try {
             db()->update('jobs', ['status' => 'failed', 'last_error' => $message, 'finished_at' => now()], 'id = ?', [$job['id']]);

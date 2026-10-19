@@ -30,9 +30,14 @@ $types = [
                         <?php if ($j['last_error']): ?><div class="small text-danger text-break" style="max-width:420px"><?= e($j['last_error']) ?></div><?php endif; ?></td>
                     <td class="small text-muted text-nowrap"><?= e(time_ago($j['created_at'])) ?></td>
                     <td class="text-end">
-                        <?php if ($j['status'] === 'failed'): ?>
-                            <form method="post" action="<?= url('/jobs/' . $j['id'] . '/retry') ?>"><?= csrf_field() ?><button class="btn btn-sm btn-light" title="Chạy lại"><i class="bi bi-arrow-clockwise"></i></button></form>
+                        <div class="d-flex gap-1 justify-content-end">
+                        <?php if ($j['status'] !== 'done'): ?>
+                            <form method="post" action="<?= url('/jobs/' . $j['id'] . '/run') ?>" data-confirm="Chạy job #<?= $j['id'] ?> ngay trên web (không chờ cron)? Trang sẽ chờ đến khi xong."><?= csrf_field() ?><button class="btn btn-sm btn-outline-primary text-nowrap" title="Chạy ngay trên web"><i class="bi bi-play-fill"></i> Chạy ngay</button></form>
                         <?php endif; ?>
+                        <?php if ($j['status'] === 'failed'): ?>
+                            <form method="post" action="<?= url('/jobs/' . $j['id'] . '/retry') ?>"><?= csrf_field() ?><button class="btn btn-sm btn-light" title="Đưa lại vào hàng đợi cron"><i class="bi bi-arrow-clockwise"></i></button></form>
+                        <?php endif; ?>
+                        </div>
                     </td>
                 </tr>
             <?php endforeach; ?>

@@ -23,6 +23,7 @@ set_time_limit(0);
 ignore_user_abort(true);
 
 require dirname(__DIR__) . '/app/bootstrap.php';
+App\Worker::log('Cron khởi động');
 
 if (!is_installed()) {
     exit("Chưa cài đặt ứng dụng.\n");
@@ -44,4 +45,9 @@ App\Settings::set('cron_last_run', json_encode([
     'missing' => $missing,
 ], JSON_UNESCAPED_UNICODE));
 
-(new App\Worker())->run();
+try {
+    (new App\Worker())->run();
+} catch (\Throwable $e) {
+    App\Worker::log('LỖI worker: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
+}
+App\Worker::log('Cron kết thúc');
