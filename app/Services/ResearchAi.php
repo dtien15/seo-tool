@@ -193,6 +193,14 @@ class ResearchAi
 
     // ------------------------------------------------------------------ Gợi ý từ khóa
 
+    /** Bỏ nhãn AI hay ghi kèm ("nhóm chủ đề: ...", "intent: ...") và ký tự thừa. */
+    public static function cleanField(string $v): string
+    {
+        $v = trim($v, " \t`*-•\"'");
+        $v = preg_replace('~^(nhóm\s*chủ\s*đề|nhóm|chủ\s*đề|cluster|topic|group|intent|ý\s*định|ưu\s*tiên|priority|từ\s*khóa|keyword)\s*[:：-]\s*~iu', '', $v) ?? $v;
+        return trim($v, " \t`*-•\"'");
+    }
+
     public static function keywords(array $project, int $count, array $ctx): void
     {
         $count = max(10, min(100, $count));
@@ -216,12 +224,15 @@ class ResearchAi
         $res = AiText::complete(self::system($project), $prompt, 6000, $ctx, 'keywords');
         $n = 0;
         foreach (preg_split('~\R~', (string)(ContentWriter::tag($res['text'], 'keywords') ?? $res['text'])) as $line) {
-            $p = array_map(fn($v) => trim($v, " \t`*-•"), explode('|', $line));
+            $p = array_map(fn($v) => self::cleanField($v), explode('|', $line));
             $kw = mb_strtolower($p[0] ?? '');
-            if ($kw === '' || count($p) < 2 || $kw === 'từ khóa') {
+            // Bỏ dòng tiêu đề và từ khóa rác (1 chữ / quá ngắn)
+            if ($kw === '' || count($p) < 2 || $kw === 'từ khóa' || mb_strlen($kw) < 6 || !str_contains($kw, ' ')) {
                 continue;
             }
-            $intent = in_array($p[1] ?? '', ['informational', 'commercial', 'transactional', 'navigational', 'local'], true) ? $p[1] : null;
+            $p[1] = strtolower($p[1]);
+            $intent = in_array($p[1], ['informational', 'commercial', 'transactional', 'navigational', 'local'], true) ? $p[1] : null;
+            $p[3] = preg_replace('~\D~', '', $p[3] ?? '');
             $n += db()->query(
                 'INSERT IGNORE INTO keywords (project_id, keyword, intent, cluster, priority, source) VALUES (?, ?, ?, ?, ?, ?)',
                 [$project['id'], mb_substr($kw, 0, 255), $intent, mb_substr($p[2] ?? '', 0, 190) ?: null, max(1, min(3, (int)($p[3] ?? 2) ?: 2)), 'AI gợi ý']

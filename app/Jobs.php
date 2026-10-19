@@ -432,7 +432,7 @@ TXT;
             }
             // Bỏ gạch đầu dòng / dấu ` do ChatGPT thêm, và "(volume)" ở cuối
             $kw = mb_strtolower(trim(preg_replace('~^[\s\-*•`]+|\s*\(\d+\)$~u', '', $parts[0]) ?? $parts[0]));
-            $group = trim($parts[1], " \t`*");
+            $group = \App\Services\ResearchAi::cleanField($parts[1]);
             if (isset($map[$kw]) && $group !== '') {
                 db()->update('keywords', ['cluster' => mb_substr($group, 0, 190)], 'id = ?', [$map[$kw]]);
                 $updated++;
