@@ -25,16 +25,22 @@ class OpenAiText
     public function complete(string $system, string $prompt, int $maxTokens = 16000): array
     {
         $base = rtrim((string)(getenv('OPENAI_BASE_URL') ?: 'https://api.openai.com/v1'), '/');
+        $body = [
+            'model' => $this->model,
+            'messages' => [
+                ['role' => 'system', 'content' => $system],
+                ['role' => 'user', 'content' => $prompt],
+            ],
+            'max_completion_tokens' => $maxTokens,
+        ];
+        // Model suy luận (gpt-5..., o1/o3/o4...): token suy nghĩ tính chung vào giới hạn -> nghĩ ít + chừa thêm chỗ
+        if (preg_match('~^(gpt-5|o\d)~', $this->model)) {
+            $body['reasoning_effort'] = 'low';
+            $body['max_completion_tokens'] = $maxTokens + 16000;
+        }
         $res = http_request('POST', $base . '/chat/completions', [
             'headers' => ['Authorization' => 'Bearer ' . $this->apiKey, 'Content-Type' => 'application/json'],
-            'body' => json_encode([
-                'model' => $this->model,
-                'messages' => [
-                    ['role' => 'system', 'content' => $system],
-                    ['role' => 'user', 'content' => $prompt],
-                ],
-                'max_completion_tokens' => $maxTokens,
-            ], JSON_UNESCAPED_UNICODE),
+            'body' => json_encode($body, JSON_UNESCAPED_UNICODE),
             'timeout' => 600,
         ]);
         if ($res['error'] !== '') {
@@ -46,7 +52,7 @@ class OpenAiText
         }
         $choice = $res['json']['choices'][0] ?? [];
         if (($choice['finish_reason'] ?? '') === 'length') {
-            throw new \RuntimeException('Bài viết vượt quá giới hạn độ dài một lần tạo. Hãy giảm số từ mục tiêu.');
+            throw new \RuntimeException('AI trả lời quá dài, vượt giới hạn một lần tạo (' . $this->model . '). Thử lại, giảm số từ mục tiêu hoặc dùng model khác.');
         }
         $text = (string)($choice['message']['content'] ?? '');
         if ($text === '') {
