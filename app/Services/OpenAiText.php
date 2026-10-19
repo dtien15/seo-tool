@@ -18,11 +18,7 @@ class OpenAiText
         if ($key === '' || $key === null) {
             throw new \RuntimeException('Chưa nhập OpenAI API key trong Cài đặt hệ thống.');
         }
-        $model = trim((string)Settings::get('openai_text_model', ''));
-        if ($model === '') {
-            throw new \RuntimeException('Chưa nhập tên model OpenAI dùng để viết bài trong Cài đặt hệ thống.');
-        }
-        return new self($key, $model);
+        return new self($key, AiText::openaiTextModel());
     }
 
     /** @return array{text: string, input_tokens: int, output_tokens: int, model: string} */

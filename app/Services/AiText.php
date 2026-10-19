@@ -43,9 +43,6 @@ class AiText
         if (!self::hasKey($provider) || !in_array($cap, self::PROVIDERS[$provider][1], true)) {
             return false;
         }
-        if ($provider === 'openai' && $cap === 'text') {
-            return trim((string)Settings::get('openai_text_model', '')) !== '';
-        }
         return true;
     }
 
@@ -101,6 +98,40 @@ class AiText
             : ClaudeService::fromSettings()->complete($system, $prompt, $maxTokens);
     }
 
+    /**
+     * Model OpenAI dùng để viết: lấy trong Cài đặt; để trống thì tự chọn model chat mới nhất
+     * (ưu tiên bản "mini" cho rẻ) trong danh sách model của tài khoản và lưu lại.
+     */
+    public static function openaiTextModel(): string
+    {
+        $model = trim((string)Settings::get('openai_text_model', ''));
+        if ($model !== '') {
+            return $model;
+        }
+        $base = rtrim((string)(getenv('OPENAI_BASE_URL') ?: 'https://api.openai.com/v1'), '/');
+        $res = http_request('GET', $base . '/models', ['headers' => ['Authorization' => 'Bearer ' . Settings::get('openai_api_key')], 'timeout' => 20]);
+        if ($res['status'] !== 200) {
+            throw new \RuntimeException('OpenAI: ' . ($res['json']['error']['message'] ?? ($res['error'] ?: 'HTTP ' . $res['status'])));
+        }
+        $best = null;
+        $bestScore = null;
+        foreach ($res['json']['data'] ?? [] as $m) {
+            $id = (string)($m['id'] ?? '');
+            if (!preg_match('~^gpt-(\d+(?:\.\d+)?)(o)?(-mini)?$~', $id, $mm)) {
+                continue; // bỏ bản audio, realtime, image, search, nano, bản có ngày...
+            }
+            $score = [(float)$mm[1], !empty($mm[3]) ? 1 : 0];
+            if ($bestScore === null || $score > $bestScore) {
+                [$best, $bestScore] = [$id, $score];
+            }
+        }
+        if ($best === null) {
+            throw new \RuntimeException('Không tìm thấy model chat nào trong tài khoản OpenAI – hãy nhập tên model viết trong Cài đặt hệ thống.');
+        }
+        Settings::set('openai_text_model', $best);
+        return $best;
+    }
+
     /** Kiểm tra kết nối một AI và lưu kết quả. */
     public static function test(string $provider): array
     {
@@ -118,12 +149,8 @@ class AiText
                     throw new \RuntimeException('OpenAI: ' . ($res['json']['error']['message'] ?? ($res['error'] ?: 'HTTP ' . $res['status'])));
                 }
                 $msg = 'API key hợp lệ';
-                if (trim((string)Settings::get('openai_text_model', '')) !== '') {
-                    $r = self::call('openai', 'Bạn là trợ lý ngắn gọn.', 'Trả lời đúng: OK', 200);
-                    $msg .= ' · viết bài bằng ' . $r['model'] . ': OK';
-                } else {
-                    $msg .= ' · chưa nhập model viết bài (chỉ dùng tạo hình)';
-                }
+                $r = self::call('openai', 'Bạn là trợ lý ngắn gọn.', 'Trả lời đúng: OK', 200);
+                $msg .= ' · viết bằng ' . $r['model'] . ': OK';
             } else {
                 $r = self::call('anthropic', 'Bạn là trợ lý ngắn gọn.', 'Trả lời đúng: OK', 2000);
                 $msg = 'Kết nối thành công · ' . $r['model'];

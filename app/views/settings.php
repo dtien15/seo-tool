@@ -86,7 +86,7 @@
 
             <div class="card mb-4">
                 <div class="card-header bg-white d-flex align-items-center gap-2"><strong><i class="bi bi-openai"></i> OpenAI</strong> <?= $statusBadge('openai') ?>
-                    <span class="ms-auto small text-muted">Viết (nếu nhập model) + tạo hình</span></div>
+                    <span class="ms-auto small text-muted">Viết: outline, bài viết, từ khóa, nghiên cứu... + tạo hình</span></div>
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">API key</label>
@@ -94,8 +94,8 @@
                         <div class="form-text">Tạo tại <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com</a> (khác gói ChatGPT Plus).</div>
                     </div>
                     <div class="row g-3">
-                        <div class="col-12 small fw-semibold text-muted">Viết bài (để trống model nếu chỉ dùng OpenAI tạo hình)</div>
-                        <div class="col-md-4"><label class="form-label small">Model viết</label><input name="openai_text_model" class="form-control form-control-sm" value="<?= e(Settings::get('openai_text_model', '')) ?>" placeholder="vd gpt-5-mini"></div>
+                        <div class="col-12 small fw-semibold text-muted">Viết (outline, bài viết, gợi ý từ khóa, nghiên cứu, kiểm tra web...)</div>
+                        <div class="col-md-4"><label class="form-label small">Model viết</label><input name="openai_text_model" class="form-control form-control-sm" value="<?= e(Settings::get('openai_text_model', '')) ?>" placeholder="Để trống = tự chọn"></div>
                         <div class="col-md-4"><label class="form-label small">Giá input $/1M token</label><input type="number" step="0.01" min="0" name="openai_price_in" class="form-control form-control-sm" value="<?= e(Settings::get('openai_price_in', '')) ?>"></div>
                         <div class="col-md-4"><label class="form-label small">Giá output $/1M token</label><input type="number" step="0.01" min="0" name="openai_price_out" class="form-control form-control-sm" value="<?= e(Settings::get('openai_price_out', '')) ?>"></div>
                         <div class="col-12 small fw-semibold text-muted mt-3">Tạo hình</div>
