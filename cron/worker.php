@@ -34,4 +34,14 @@ if ($lock && flock($lock, LOCK_EX | LOCK_NB)) {
     flock($lock, LOCK_UN);
 }
 
+// Ghi lại thông tin lần chạy để xem ở Cài đặt hệ thống (phiên bản PHP, extension thiếu...)
+$missing = array_values(array_filter(['curl', 'mbstring', 'openssl', 'json', 'pdo_mysql'], fn($x) => !extension_loaded($x)));
+App\Settings::set('cron_last_run', json_encode([
+    'at' => date('Y-m-d H:i:s'),
+    'php' => PHP_VERSION,
+    'binary' => PHP_BINARY,
+    'memory' => ini_get('memory_limit'),
+    'missing' => $missing,
+], JSON_UNESCAPED_UNICODE));
+
 (new App\Worker())->run();

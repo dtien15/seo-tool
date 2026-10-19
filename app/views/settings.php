@@ -15,7 +15,15 @@
         <?php else: ?>
             <span class="text-muted">Chưa có job nào gần đây.</span>
         <?php endif; ?>
-        <div class="text-muted mt-1">Lệnh cron (mỗi phút):<br><code class="user-select-all">php <?= e(BASE_PATH) ?>/cron/worker.php &gt;/dev/null 2&gt;&amp;1</code></div>
+        <?php $cron = json_decode((string)Settings::get('cron_last_run', ''), true); ?>
+        <?php if (is_array($cron)): ?>
+            <div class="mt-1">Lần chạy gần nhất: <?= e(time_ago($cron['at'])) ?> · PHP <?= e($cron['php']) ?> · RAM <?= e((string)$cron['memory']) ?></div>
+            <?php if (!empty($cron['missing'])): ?><div class="text-danger">Cron thiếu extension: <b><?= e(implode(', ', $cron['missing'])) ?></b> – bật trong cPanel → Select PHP Version.</div><?php endif; ?>
+            <div class="text-muted">PHP cron: <code><?= e((string)$cron['binary']) ?></code></div>
+        <?php else: ?>
+            <div class="text-danger mt-1">Cron chưa chạy lần nào.</div>
+        <?php endif; ?>
+        <div class="text-muted mt-1">Lệnh cron (mỗi phút):<br><code class="user-select-all"><?= is_dir('/opt/alt/php82') ? '/opt/alt/php82/usr/bin/php' : 'php' ?> <?= e(BASE_PATH) ?>/cron/worker.php &gt;/dev/null 2&gt;&amp;1</code></div>
     </div></div></div>
     <div class="col-md-4"><div class="card h-100"><div class="card-body small">
         <div class="fw-semibold mb-1"><i class="bi bi-info-circle"></i> Phiên bản</div>

@@ -14,6 +14,7 @@ class Worker
     private const STALE_MINUTES = 20;       // job "running" quá lâu coi như treo
 
     private string $id;
+    private ?array $current = null;         // job đang xử lý (để ghi lỗi nếu PHP chết giữa chừng)
 
     public function __construct()
     {
@@ -22,6 +23,7 @@ class Worker
 
     public function run(): void
     {
+        register_shutdown_function([$this, 'onShutdown']);
         $this->recoverStale();
         $this->scheduleSheetPulls();
 
@@ -59,6 +61,7 @@ class Worker
     private function process(array $job): void
     {
         $this->out("Job #{$job['id']} {$job['type']}...");
+        $this->current = $job;
         $isArticleTask = Jobs::isArticleTask($job['type']);
         if ($isArticleTask && $job['article_id']) {
             Article::setAiState((int)$job['article_id'], 'running', $job['type']);
@@ -85,6 +88,26 @@ class Worker
                 Article::setAiState((int)$job['article_id'], 'failed', $job['type'], $message);
             }
             $this->out('  LỖI: ' . $message);
+        }
+        $this->current = null;
+    }
+
+    /** PHP chết giữa chừng (lỗi nghiêm trọng, hết bộ nhớ...) -> ghi lỗi vào job thay vì để treo. */
+    public function onShutdown(): void
+    {
+        $err = error_get_last();
+        if (!$this->current || !$err || !in_array($err['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE, E_USER_ERROR], true)) {
+            return;
+        }
+        $job = $this->current;
+        $message = 'Lỗi PHP: ' . substr($err['message'], 0, 1500) . ' (' . basename($err['file']) . ':' . $err['line'] . ')';
+        log_error("Job #{$job['id']} {$job['type']}: " . $message);
+        try {
+            db()->update('jobs', ['status' => 'failed', 'last_error' => $message, 'finished_at' => now()], 'id = ?', [$job['id']]);
+            if (Jobs::isArticleTask($job['type']) && $job['article_id']) {
+                Article::setAiState((int)$job['article_id'], 'failed', $job['type'], $message);
+            }
+        } catch (\Throwable) {
         }
     }
 
